@@ -20,3 +20,8 @@ Repository = "https://github.com/jonas-bischofberger/accessible-space"
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules"
+filterwarnings = "ignore:Inferring attacking direction but 'period_col' is unset. If you have data across multiple halfs, specify 'period_col', otherwise pass 'period_col'=None.:UserWarning"  # Our test data has no periods
+norecursedirs = ".joblib_cache"

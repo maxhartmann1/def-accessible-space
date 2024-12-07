@@ -1,4 +1,5 @@
 import collections
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -6,10 +7,16 @@ import matplotlib.pyplot as plt
 import matplotlib.tri
 import matplotlib.colors
 
+import streamlit as st
+
+_sentinel = object()
+
+import accessible_space
 from .core import _DEFAULT_PASS_START_LOCATION_OFFSET, _DEFAULT_B0, _DEFAULT_TIME_OFFSET_BALL, _DEFAULT_A_MAX, \
     _DEFAULT_USE_MAX, _DEFAULT_USE_APPROX_TWO_POINT, _DEFAULT_B1, _DEFAULT_PLAYER_VELOCITY, _DEFAULT_V_MAX, \
-    _DEFAULT_KEEP_INERTIAL_VELOCITY, _DEFAULT_INERTIAL_SECONDS, _DEFAULT_TOL_DISTANCE, _DEFAULT_RADIAL_GRIDSIZE, \
-    simulate_passes_chunked, crop_result_to_pitch, integrate_attacking_surface
+    _DEFAULT_KEEP_INERTIAL_VELOCITY, _DEFAULT_INERTIAL_SECONDS, _DEFAULT_TOL_DISTANCE, _DEFAULT_RADIAL_GRIDSIZE,  \
+    _DEFAULT_V0_PROB_AGGREGATION_MODE, _DEFAULT_NORMALIZE, _DEFAULT_USE_EFFICIENT_SIGMOID, \
+    simulate_passes_chunked, crop_density_to_pitch, integrate_surfaces
 from .utility import get_unused_column_name, _dist_to_opp_goal, _opening_angle_to_goal, _adjust_saturation
 
 _DEFAULT_N_FRAMES_AFTER_PASS_FOR_V0 = 3
@@ -22,30 +29,28 @@ _DEFAULT_N_V0_FOR_XC = 6
 
 _DEFAULT_N_ANGLES_FOR_DAS = 60
 _DEFAULT_PHI_OFFSET = 0
-_DEFAULT_N_V0_FOR_DAS = 20
-_DEFAULT_V0_MIN_FOR_DAS = 3
+_DEFAULT_N_V0_FOR_DAS = 60
+_DEFAULT_V0_MIN_FOR_DAS = 0.01
 _DEFAULT_V0_MAX_FOR_DAS = 30
 
-ExpectedPassCompletionResult = collections.namedtuple("ExpectedPassCompletionResult", ["xc", "simulation_index", "simulation_result"])
 
-
-def get_matrix_coordinates(
+def _get_matrix_coordinates(
     df_tracking, frame_col="frame_id", player_col="player_id", ball_player_id="ball", team_col="team_id",
-    controlling_team_col="ball_possession", x_col="x", y_col="y", vx_col="vx", vy_col="vy"
+    controlling_team_col="team_in_possession", x_col="x", y_col="y", vx_col="vx", vy_col="vy"
 ):
     """
     Convert tracking data from a DataFrame to numpy matrices as used within this package to compute the passing model.
 
-    >>> df_tracking = pd.DataFrame({"frame_id": [5, 5, 6, 6, 5, 6], "player_id": ["A", "B", "A", "B", "ball", "ball"], "team_id": ["H", "A", "H", "A", None, None], "ball_possession": ["H", "H", "H", "H", "H", "H"], "x": [1, 2, 3, 4, 5, 6], "y": [5, 6, 7, 8, 9, 10], "vx": [9, 10, 11, 12, 13, 14], "vy": [13, 14, 15, 16, 17, 18]})
+    >>> df_tracking = pd.DataFrame({"frame_id": [5, 5, 6, 6, 5, 6], "player_id": ["A", "B", "A", "B", "ball", "ball"], "team_id": ["H", "A", "H", "A", None, None], "team_in_possession": ["H", "H", "H", "H", "H", "H"], "x": [1, 2, 3, 4, 5, 6], "y": [5, 6, 7, 8, 9, 10], "vx": [9, 10, 11, 12, 13, 14], "vy": [13, 14, 15, 16, 17, 18]})
     >>> df_tracking
-       frame_id player_id team_id ball_possession  x   y  vx  vy
-    0         5         A       H               H  1   5   9  13
-    1         5         B       A               H  2   6  10  14
-    2         6         A       H               H  3   7  11  15
-    3         6         B       A               H  4   8  12  16
-    4         5      ball    None               H  5   9  13  17
-    5         6      ball    None               H  6  10  14  18
-    >>> PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_idx = get_matrix_coordinates(df_tracking)
+       frame_id player_id team_id team_in_possession  x   y  vx  vy
+    0         5         A       H                  H  1   5   9  13
+    1         5         B       A                  H  2   6  10  14
+    2         6         A       H                  H  3   7  11  15
+    3         6         B       A                  H  4   8  12  16
+    4         5      ball    None                  H  5   9  13  17
+    5         6      ball    None                  H  6  10  14  18
+    >>> PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = _get_matrix_coordinates(df_tracking)
     >>> PLAYER_POS, PLAYER_POS.shape
     (array([[[ 1,  5,  9, 13],
             [ 2,  6, 10, 14]],
@@ -61,9 +66,14 @@ def get_matrix_coordinates(
     (array(['H', 'A'], dtype=object), (2,))
     >>> controlling_teams, controlling_teams.shape
     (array(['H', 'H'], dtype=object), (2,))
-    >>> frame_to_idx
+    >>> frame_to_index
     {5: 0, 6: 1}
     """
+    if controlling_team_col not in df_tracking.columns:
+        raise KeyError(f"Tracking data does not contain column '{controlling_team_col}'")
+    if not set(df_tracking[team_col].unique()).issubset(set(df_tracking[team_col].unique())):
+        raise ValueError(f"Tracking data contains teams that are not present in the controlling team column ({team_col=}, {controlling_team_col=})")
+
     df_tracking = df_tracking.sort_values(by=[frame_col, team_col])
 
     i_player = df_tracking[player_col] != ball_player_id
@@ -78,13 +88,16 @@ def get_matrix_coordinates(
     dfp = df_players.stack(level=1, dropna=False)
 
     PLAYER_POS = dfp.values.reshape(F, P, C)
-    frame_to_idx = {frame: i for i, frame in enumerate(df_players.index)}
+    frame_to_index = {frame: i for i, frame in enumerate(df_players.index)}
+    player_to_index = {player: i for i, player in enumerate(df_players.columns.get_level_values(1).unique())}
 
     players = df_players.columns.get_level_values(1).unique()  # P
     player2team = df_tracking.loc[i_player, [player_col, team_col]].drop_duplicates().set_index(player_col)[team_col]
     player_teams = player2team.loc[players].values
 
     df_ball = df_tracking.loc[~i_player].set_index(frame_col)[[x_col, y_col, vx_col, vy_col]]
+    if len(df_ball) == 0:
+        raise ValueError(f"Tracking data contains no ball data ({ball_player_id=})")
     BALL_POS = df_ball.values  # F x C
 
     controlling_teams = df_tracking.groupby(frame_col)[controlling_team_col].first().values
@@ -98,7 +111,7 @@ def get_matrix_coordinates(
     assert PLAYER_POS.shape[2] >= 4  # >= or = ?
     assert BALL_POS.shape[1] >= 2  # ...
 
-    return PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_idx
+    return PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index
 
 
 def per_object_frameify_tracking_data(
@@ -200,16 +213,28 @@ def get_pass_velocity(
 
 
 def get_expected_pass_completion(
-    df_passes, df_tracking, tracking_frame_col="frame_id", event_frame_col="frame_id",
-    tracking_player_col="player_id", tracking_team_col="team_id", ball_tracking_player_id="ball",
-    n_frames_after_pass_for_v0=5, fallback_v0=10, tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx",
-    tracking_vy_col="vy", tracking_v_col=None, event_start_x_col="x", event_start_y_col="y",
-    event_end_x_col="x_target", event_end_y_col="y_target", event_team_col="team_id", event_player_col="player_id",
-    tracking_ball_possession_col=None,
-    use_event_ball_position=False,
+    df_passes, df_tracking,
+
+    # Columns - pass these parameters according to your data
+    event_frame_col="frame_id",
+    event_team_col="team_id",
+    event_player_col="player_id",
+    event_start_x_col="x", event_start_y_col="y", event_end_x_col="x_target", event_end_y_col="y_target",
+    tracking_frame_col="frame_id",
+    tracking_player_col="player_id",
+    tracking_team_col="team_id",
+    tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_v_col=None,
+    tracking_ball_possession_col="team_in_possession",
+    ball_tracking_player_id="ball",
+
+    # Options
+    use_event_coordinates_as_ball_position=False,
     chunk_size=200,
+    additional_fields_to_return=("attack_cum_prob", "attack_cum_poss", "attack_prob_density", "attack_poss_density", "defense_cum_prob", "defense_cum_poss", "defense_prob_density", "defense_poss_density", "cum_p0", "p0_density", "player_cum_prob", "player_cum_poss", "player_prob_density", "player_poss_density"),  # Set to None to speed up calculation
 
     # xC Parameters
+    n_frames_after_pass_for_v0=5,
+    fallback_v0=10,
     exclude_passer=True,
     use_poss=_DEFAULT_USE_POSS_FOR_XC,
     use_fixed_v0=_DEFAULT_USE_FIXED_V0_FOR_XC,
@@ -231,51 +256,72 @@ def get_expected_pass_completion(
     inertial_seconds=_DEFAULT_INERTIAL_SECONDS,
     tol_distance=_DEFAULT_TOL_DISTANCE,
     use_approx_two_point=_DEFAULT_USE_APPROX_TWO_POINT,
+    v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE,
+    normalize=_DEFAULT_NORMALIZE,
+    use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID,
 ):
     """
-    Calculate Expected Pass Completion (xC) for the given passes, using the given tracking data.
+    Calculate Expected Pass Completion (xC) for the given passes, using the given tracking data.    
 
     >>> pd.set_option("display.max_columns", None)
     >>> pd.set_option("display.expand_frame_repr", False)
     >>> import accessible_space.tests.resources as res
-    >>> df_passes, df_tracking = res.get_df_passes(), res.get_df_tracking()
+    >>> df_passes, df_tracking = res.df_passes, res.df_tracking
     >>> df_passes
-       frame_id  target_frame_id player_id  team_id receiver_id pass_outcome     x     y  x_target  y_target
-    0         0                6         A        0           B   successful  -0.1   0.0       -10        11
-    1         6               10         B        0           X       failed  -9.6  10.5        15        30
-    2        14               19         C        0           Y       failed -13.8 -12.9        49        -1
-    >>> df_passes["xC"], df_passes["simulation_index"], simulation_result = get_expected_pass_completion(df_passes, df_tracking, tracking_frame_col="frame_id", event_frame_col="frame_id", tracking_player_col="player_id", tracking_team_col="team_id", ball_tracking_player_id="ball", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", event_start_x_col="x", event_start_y_col="y", event_end_x_col="x_target", event_end_y_col="y_target", event_team_col="team_id", event_player_col="player_id")
+       frame_id player_id receiver_id team_id     x     y  x_target  y_target pass_outcome                 event_string
+    0         0         A           B    Home  -0.1   0.0        20        30   successful  0: Pass A -> B (successful)
+    1         6         B           X    Home  -9.6  10.5        15        30       failed      6: Pass B -> X (failed)
+    2        14         C           Y    Home -13.8 -12.9        49        -1       failed     14: Pass C -> Y (failed)
+    >>> result = get_expected_pass_completion(df_passes, df_tracking, tracking_frame_col="frame_id", event_frame_col="frame_id", tracking_player_col="player_id", tracking_team_col="team_id", ball_tracking_player_id="ball", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", event_start_x_col="x", event_start_y_col="y", event_end_x_col="x_target", event_end_y_col="y_target", event_team_col="team_id", event_player_col="player_id")
+    >>> df_passes["xC"], df_passes["frame_index"], simulation_result = result.xc, result.event_frame_index, result.simulation_result
     >>> df_passes
-       frame_id  target_frame_id player_id  team_id receiver_id pass_outcome     x     y  x_target  y_target        xC  simulation_index
-    0         0                6         A        0           B   successful  -0.1   0.0       -10        11  0.972250               0.0
-    1         6               10         B        0           X       failed  -9.6  10.5        15        30  0.091146               NaN
-    2        14               19         C        0           Y       failed -13.8 -12.9        49        -1  0.081058               NaN
-    >>> simulation_result.poss_density_att.shape
-    (3, 1, 50)
-    >>> simulation_result.prob_cum_att[int(df_passes["simulation_index"].iloc[0]), 0, -1]
-    0.9722499353573427
+       frame_id player_id receiver_id team_id     x     y  x_target  y_target pass_outcome                 event_string        xC  frame_index
+    0         0         A           B    Home  -0.1   0.0        20        30   successful  0: Pass A -> B (successful)  0.483354            0
+    1         6         B           X    Home  -9.6  10.5        15        30       failed      6: Pass B -> X (failed)  0.052611            1
+    2        14         C           Y    Home -13.8 -12.9        49        -1       failed     14: Pass C -> Y (failed)  0.161540            2
+    >>> simulation_result.attack_cum_prob[int(df_passes["frame_index"].iloc[0]), 0, -1]
+    0.4833542239895574
     """
+    if df_tracking.empty:
+        raise ValueError("Tracking data is empty")
+    missing_tracking_cols = [(parameter_name, col) for parameter_name, col in [("tracking_x_col", tracking_x_col), ("tracking_y_col", tracking_y_col), ("tracking_vx_col", tracking_vx_col), ("tracking_vy_col", tracking_vy_col), ("tracking_frame_col", tracking_frame_col), ("tracking_team_col", tracking_team_col), ("tracking_player_col", tracking_player_col), ("tracking_ball_possession_col", tracking_ball_possession_col)] if col not in df_tracking.columns]
+    if len(missing_tracking_cols) > 0:
+        raise KeyError(f"""Missing column{'s' if len(missing_tracking_cols) > 1 else ''} in tracking data: {', '.join(['='.join([str(parameter_name), "'" + str(col) + "'"]) for (parameter_name, col) in missing_tracking_cols])}""")
+    if df_passes.empty:
+        raise ValueError("Passes data is empty")
+    missing_event_cols = [(parameter_name, col) for parameter_name, col in [("event_frame_col", event_frame_col), ("event_start_x_col", event_start_x_col), ("event_start_y_col", event_start_y_col), ("event_end_x_col", event_end_x_col), ("event_end_y_col", event_end_y_col), ("event_team_col", event_team_col), ("event_player_col", event_player_col)] if col not in df_passes.columns]
+    if len(missing_event_cols) > 0:
+        raise KeyError(f"""Missing column{'s' if len(missing_event_cols) > 1 else ''} in passes data: {', '.join(['='.join([str(parameter_name), "'" + str(col) + "'"]) for (parameter_name, col) in missing_event_cols])}""")
+    # assert that teams match
+    if not set(df_passes[event_team_col].unique()).issubset(set(df_tracking[tracking_team_col].unique())):
+        warnings.warn(f"Teams in passes data do not match teams in tracking data: {set(df_passes[event_team_col].unique())} is not a subset of {set(df_tracking[tracking_team_col].unique())}")
+
     df_tracking = df_tracking.copy()
     df_passes = df_passes.copy()
 
-    # 1. Extract player and ball positions at passes
-    assert set(df_passes[event_frame_col]).issubset(set(df_tracking[tracking_frame_col]))
+    if exclude_passer:
+        if not set(df_tracking[tracking_player_col]).issuperset(set(df_passes[event_player_col])):
+            raise ValueError("Tracking data does not contain all players that are making passes.")
 
+    # 1. Extract player and ball positions at passes
+    if not set(df_passes[event_frame_col]).issubset(set(df_tracking[tracking_frame_col])):
+        raise ValueError(f"Pass frames are not present in tracking data: {set(df_passes[event_frame_col])} not subset of {set(df_tracking[tracking_frame_col])}")
+# TODO remove all asserts (and turn into exceptions if necessary)
     unique_frame_col = get_unused_column_name(df_passes, "unique_frame")
     df_passes[unique_frame_col] = np.arange(df_passes.shape[0])
 
     df_tracking_passes = df_passes[[event_frame_col, unique_frame_col]].merge(df_tracking, left_on=event_frame_col, right_on=tracking_frame_col, how="left")
-    if use_event_ball_position:
+    if use_event_coordinates_as_ball_position:
+        missing_cols = [col for col in [event_start_x_col, event_start_y_col] if col not in df_passes.columns]
+        if len(missing_cols) > 0:
+            raise KeyError(f"""Missing column{'s' if len(missing_cols) > 1 else ''} in passes data: {', '.join([f"'{col}'" for col in missing_cols])}. You can set 'use_event_coordinates_as_ball_position' to 'False' to use tracking data for the ball position instead.""")
         df_tracking_passes = df_tracking_passes.set_index(unique_frame_col)
         df_passes_copy = df_passes.copy().set_index(unique_frame_col)
         df_tracking_passes.loc[df_tracking_passes[tracking_player_col] == ball_tracking_player_id, tracking_x_col] = df_passes_copy[event_start_x_col]
         df_tracking_passes.loc[df_tracking_passes[tracking_player_col] == ball_tracking_player_id, tracking_y_col] = df_passes_copy[event_start_y_col]
         df_tracking_passes = df_tracking_passes.reset_index()
 
-    if tracking_ball_possession_col is None:
-        tracking_ball_possession_col = event_team_col
-
-    PLAYER_POS, BALL_POS, players, player_teams, _, frame_to_idx = get_matrix_coordinates(
+    PLAYER_POS, BALL_POS, players, player_teams, _, unique_frame_to_index, player_to_index = _get_matrix_coordinates(
         df_tracking_passes, frame_col=unique_frame_col, player_col=tracking_player_col,
         ball_player_id=ball_tracking_player_id, team_col=tracking_team_col, x_col=tracking_x_col, y_col=tracking_y_col,
         vx_col=tracking_vx_col, vy_col=tracking_vy_col, controlling_team_col=tracking_ball_possession_col,
@@ -308,10 +354,16 @@ def get_expected_pass_completion(
         passers_to_exclude = None
 
     # 5. Simulate passes to get expected completion
+    fields_to_return = ["attack_cum_poss"] if use_poss else ["attack_cum_prob"]
+    if additional_fields_to_return is None:
+        additional_fields_to_return = []
+    fields_to_return = list(set(fields_to_return + list(additional_fields_to_return)))
     simulation_result = simulate_passes_chunked(
         # xC parameters
         PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_teams, player_teams, players,
         passers_to_exclude=passers_to_exclude,
+
+        fields_to_return=fields_to_return,
 
         # Core model parameters
         pass_start_location_offset=pass_start_location_offset,
@@ -327,18 +379,24 @@ def get_expected_pass_completion(
         inertial_seconds=inertial_seconds,
         tol_distance=tol_distance,
         use_approx_two_point=use_approx_two_point,
+        v0_prob_aggregation_mode=v0_prob_aggregation_mode,
+        normalize=normalize,
+        use_efficient_sigmoid=use_efficient_sigmoid,
 
-        # Chunk size
         chunk_size=chunk_size,
     )
     if use_poss:
-        xc = simulation_result.poss_cum_att[:, 0, -1]  # F x PHI x T ---> F
+        xc = simulation_result.attack_cum_poss[:, 0, -1]  # F x PHI x T ---> F
     else:
-        xc = simulation_result.prob_cum_att[:, 0, -1]  # F x PHI x T ---> F
+        xc = simulation_result.attack_cum_prob[:, 0, -1]  # F x PHI x T ---> F
 
-    simulation_index = df_passes[event_frame_col].map(frame_to_idx)
+    frame_to_unique_frame = df_passes[[event_frame_col, unique_frame_col]].drop_duplicates("frame_id", keep="first").set_index(event_frame_col)[unique_frame_col].to_dict()
+    event_frame_index = df_passes[unique_frame_col].map(unique_frame_to_index)
+    tracking_frame_index = df_tracking[tracking_frame_col].map(frame_to_unique_frame)
+    tracking_player_index = df_tracking[tracking_player_col].map(player_to_index)
 
-    return ExpectedPassCompletionResult(xc, simulation_index, simulation_result)
+    ReturnValueXC = collections.namedtuple("ReturnValueXC", ["xc", "event_frame_index", "tracking_frame_index", "tracking_player_index", "simulation_result"])
+    return ReturnValueXC(xc, event_frame_index, tracking_frame_index, tracking_player_index, simulation_result)
 
 
 def _get_danger(dist_to_goal, opening_angle):
@@ -360,98 +418,161 @@ def as_dangerous_result(result, danger, danger_weight=None):
     Convert a simulation result to a dangerous simulation result by multiplying density with danger.
 
     >>> res = simulate_passes_chunked(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
-    >>> res.poss_density_def
-    array([[[3.64076555e-05, 6.78000534e-05, 4.92186270e-04, 6.01130886e-02,
-             6.00108990e-02, 2.16895102e-03, 1.68588297e-04, 8.77026250e-05,
-             5.92672504e-05, 4.47561819e-05]]])
-    >>> danger = np.array([[[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]]])
+    >>> res.defense_poss_density
+    array([[[4.04061215e-05, 6.93665348e-05, 2.44880664e-04, 6.66617232e-02,
+             6.66666667e-02, 6.63364931e-02, 4.10293354e-04, 1.45308093e-04,
+             8.82879207e-05, 6.34066099e-05, 4.94660755e-05]]])
+    >>> danger = np.array([[[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]]])
     >>> dangerous_res = as_dangerous_result(res, danger)
-    >>> dangerous_res.poss_density_def
-    array([[[3.64076555e-06, 1.35600107e-05, 1.47655881e-04, 2.40452354e-02,
-             3.00054495e-02, 1.30137061e-03, 1.18011808e-04, 7.01621000e-05,
-             5.33405253e-05, 4.47561819e-05]]])
+    >>> dangerous_res.defense_poss_density
+    array([[[0.00000000e+00, 6.93665348e-06, 4.89761327e-05, 1.99985170e-02,
+             2.66666667e-02, 3.31682466e-02, 2.46176012e-04, 1.01715665e-04,
+             7.06303366e-05, 5.70659490e-05, 4.94660755e-05]]])
     """
-    weighted_multiplication = lambda x, y, weight=danger_weight: x**weight * y**(1-weight) if weight is not None else x * y
-    return result._replace(
-        poss_cum_att=None,
-        prob_cum_att=None,
-        poss_density_att=weighted_multiplication(danger, result.poss_density_att),
-        prob_density_att=weighted_multiplication(danger, result.prob_density_att),
-        poss_cum_def=None,
-        prob_cum_def=None,
-        poss_density_def=weighted_multiplication(danger, result.poss_density_def),
-        prob_density_def=weighted_multiplication(danger, result.prob_density_def),
-    )
+    # weighted_multiplication = lambda x, y, weight=danger_weight: x**weight * y**(1-weight) if weight is not None else x * y
+    def weighted_multiplication(x, y, weight=danger_weight):
+        return x**(1/weight) * y**weight if weight is not None else x * y  # TODO use a variant that ensures that the maximum is still 105*68
 
+    return result._replace(
+        attack_cum_poss=None,
+        attack_cum_prob=None,
+        attack_poss_density=weighted_multiplication(danger, result.attack_poss_density) if result.attack_poss_density is not None else None,
+        attack_prob_density=weighted_multiplication(danger, result.attack_prob_density) if result.attack_prob_density is not None else None,
+        defense_cum_poss=None,
+        defense_cum_prob=None,
+        defense_poss_density=weighted_multiplication(danger, result.defense_poss_density) if result.defense_poss_density is not None else None,
+        defense_prob_density=weighted_multiplication(danger, result.defense_prob_density) if result.defense_prob_density is not None else None,
+        player_cum_prob=None,
+        player_cum_poss=None,
+        player_poss_density=weighted_multiplication(danger[:, np.newaxis, :, :], result.player_poss_density) if result.player_poss_density is not None else None,
+        player_prob_density=weighted_multiplication(danger[:, np.newaxis, :, :], result.player_prob_density) if result.player_prob_density is not None else None,
+    )
 
 def get_dangerous_accessible_space(
     # Data
-    df_tracking, tracking_frame_col="frame_id", tracking_player_col="player_id", tracking_team_col="team_id",
-    ball_tracking_player_id="ball", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy",
-    attacking_direction_col="attacking_direction", period_col="period_id", possession_team_col="ball_possession",
+    df_tracking, frame_col="frame_id", player_col="player_id", ball_player_id="ball", team_col="team_id", x_col="x",
+    y_col="y", vx_col="vx", vy_col="vy", attacking_direction_col=None, period_col=_sentinel,
+    possession_team_col="team_in_possession", passer_to_exclude_col=None,
     infer_attacking_direction=True,
 
     # Options
+    danger_weight=2,
     return_cropped_result=False,
+    additional_fields_to_return=("attack_cum_prob", "attack_cum_poss", "attack_prob_density", "attack_poss_density", "defense_cum_prob", "defense_cum_poss", "defense_prob_density", "defense_poss_density", "cum_p0", "p0_density", "player_cum_prob", "player_cum_poss", "player_prob_density", "player_poss_density"),
 
-    # Parameters
+    # DAS Parameters
     n_angles=_DEFAULT_N_ANGLES_FOR_DAS,
     phi_offset=_DEFAULT_PHI_OFFSET,
     n_v0=_DEFAULT_N_V0_FOR_DAS,
     v0_min=_DEFAULT_V0_MIN_FOR_DAS,
     v0_max=_DEFAULT_V0_MAX_FOR_DAS,
+
+    # Simulation parameters
+    pass_start_location_offset=_DEFAULT_PASS_START_LOCATION_OFFSET,
+    time_offset_ball=_DEFAULT_TIME_OFFSET_BALL,
+    radial_gridsize=_DEFAULT_RADIAL_GRIDSIZE,
+    b0=_DEFAULT_B0,
+    b1=_DEFAULT_B1,
+    player_velocity=_DEFAULT_PLAYER_VELOCITY,
+    keep_inertial_velocity=_DEFAULT_KEEP_INERTIAL_VELOCITY,
+    use_max=_DEFAULT_USE_MAX,
+    v_max=_DEFAULT_V_MAX,
+    a_max=_DEFAULT_A_MAX,
+    inertial_seconds=_DEFAULT_INERTIAL_SECONDS,
+    tol_distance=_DEFAULT_TOL_DISTANCE,
+    use_approx_two_point=_DEFAULT_USE_APPROX_TWO_POINT,
+    v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE,
+    normalize=_DEFAULT_NORMALIZE,
+    use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID,
 ):
     """
     >>> pd.set_option("display.max_columns", None)
     >>> pd.set_option("display.expand_frame_repr", False)
     >>> import accessible_space.tests.resources as res
-    >>> df_tracking = res.get_df_tracking()
-    >>> df_tracking["AS"], df_tracking["DAS"], df_tracking["simulation_index"], simulation_result, dangerous_result = get_dangerous_accessible_space(df_tracking, tracking_frame_col="frame_id", tracking_player_col="player_id", tracking_team_col="team_id", ball_tracking_player_id="ball", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", attacking_direction_col="attacking_direction", period_col="period_id", possession_team_col="ball_possession", infer_attacking_direction=True)
-    >>> df_tracking
-         frame_id player_id  team_id    x     y   vx    vy  ball_possession  period_id  attacking_direction           AS       DAS  simulation_index
-    0           0         A      0.0 -0.1  0.00  0.1  0.05                0          0                  1.0  4479.436833  2.235315                 0
-    1           1         A      0.0  0.0  0.05  0.1  0.05                0          0                  1.0  4511.233023  2.253153                 1
-    2           2         A      0.0  0.1  0.10  0.1  0.05                0          0                  1.0  4502.846128  2.227248                 2
-    3           3         A      0.0  0.2  0.15  0.1  0.05                0          0                  1.0  4495.100201  2.198680                 3
-    4           4         A      0.0  0.3  0.20  0.1  0.05                0          0                  1.0  4474.157453  2.109178                 4
-    ..        ...       ...      ...  ...   ...  ...   ...              ...        ...                  ...          ...       ...               ...
-    114        15      ball      NaN  1.5  0.00  0.1  0.00                1          0                 -1.0  1916.019280  0.076284                15
-    115        16      ball      NaN  1.6  0.00  0.1  0.00                1          0                 -1.0  1922.945790  0.078280                16
-    116        17      ball      NaN  1.7  0.00  0.1  0.00                1          0                 -1.0  1926.031171  0.077382                17
-    117        18      ball      NaN  1.8  0.00  0.1  0.00                1          0                 -1.0  1934.867991  0.076520                18
-    118        19      ball      NaN  1.9  0.00  0.1  0.00                1          0                 -1.0  1081.484989  0.073956                19
-    <BLANKLINE>
-    [119 rows x 13 columns]
+    >>> df_tracking = res.df_tracking
+    >>> df_tracking.head(5)
+       frame_id player_id team_id    x     y   vx    vy team_in_possession  period_id
+    0         0         A    Home -0.1  0.00  0.1  0.05               Home          0
+    1         1         A    Home  0.0  0.05  0.1  0.05               Home          0
+    2         2         A    Home  0.1  0.10  0.1  0.05               Home          0
+    3         3         A    Home  0.2  0.15  0.1  0.05               Home          0
+    4         4         A    Home  0.3  0.20  0.1  0.05               Home          0
+    >>> ret = get_dangerous_accessible_space(df_tracking, frame_col="frame_id", player_col="player_id", team_col="team_id", ball_player_id="ball", x_col="x", y_col="y", vx_col="vx", vy_col="vy", attacking_direction_col="attacking_direction", period_col="period_id", possession_team_col="team_in_possession", infer_attacking_direction=True)
+    >>> df_tracking["AS"], df_tracking["DAS"], df_tracking["frame_index"], df_tracking["player_index"] = ret.acc_space, ret.das, ret.frame_index, ret.player_index
+    >>> df_tracking.head(5)
+       frame_id player_id team_id    x     y   vx    vy team_in_possession  period_id  attacking_direction           AS       DAS  frame_index  player_index
+    0         0         A    Home -0.1  0.00  0.1  0.05               Home          0                  1.0  2558.530803  6.248570            0           0.0
+    1         1         A    Home  0.0  0.05  0.1  0.05               Home          0                  1.0  2545.716748  6.182069            1           0.0
+    2         2         A    Home  0.1  0.10  0.1  0.05               Home          0                  1.0  2539.492197  6.157924            2           0.0
+    3         3         A    Home  0.2  0.15  0.1  0.05               Home          0                  1.0  2529.022848  6.100460            3           0.0
+    4         4         A    Home  0.3  0.20  0.1  0.05               Home          0                  1.0  2526.241382  6.095369            4           0.0
     """
-    PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_idx = get_matrix_coordinates(
-        df_tracking, frame_col=tracking_frame_col, player_col=tracking_player_col,
-        ball_player_id=ball_tracking_player_id, team_col=tracking_team_col, x_col=tracking_x_col, y_col=tracking_y_col,
-        vx_col=tracking_vx_col, vy_col=tracking_vy_col, controlling_team_col=possession_team_col,
+    if df_tracking.empty:
+        raise ValueError("Tracking data is empty")
+    missing_columns = [(parameter_name, col) for parameter_name, col in [("frame_col", frame_col), ("player_col", player_col), ("team_col", team_col), ("x_col", x_col), ("y_col", y_col), ("vx_col", vx_col), ("vy_col", vy_col)] if col not in df_tracking.columns]
+    if len(missing_columns) > 0:
+        raise KeyError(f"""Missing column{'s' if len(missing_columns) > 1 else ''} in tracking data: {', '.join(['='.join([parameter_name, "'" + missing_columns + "'"]) for (parameter_name, missing_columns) in missing_columns])}""")
+    if period_col is _sentinel:
+        period_col = None
+        if infer_attacking_direction:
+            warnings.warn("Inferring attacking direction but 'period_col' is unset. If you have data across multiple halfs, specify 'period_col', otherwise pass 'period_col'=None.", UserWarning)
+
+    PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = _get_matrix_coordinates(
+        df_tracking, frame_col=frame_col, player_col=player_col,
+        ball_player_id=ball_player_id, team_col=team_col, x_col=x_col, y_col=y_col,
+        vx_col=vx_col, vy_col=vy_col, controlling_team_col=possession_team_col,
     )
     F = PLAYER_POS.shape[0]
+    if passer_to_exclude_col is not None:
+        PASSERS_TO_EXCLUDE = df_tracking.drop_duplicates(frame_col)[passer_to_exclude_col].values  # F
+        assert F == PASSERS_TO_EXCLUDE.shape[0]
 
     phi_grid = np.tile(np.linspace(phi_offset, 2*np.pi+phi_offset, n_angles, endpoint=False), (F, 1))  # F x PHI
     v0_grid = np.tile(np.linspace(v0_min, v0_max, n_v0), (F, 1))  # F x V0
 
+    if additional_fields_to_return is None:
+        additional_fields_to_return = []
+    fields_to_return = list(set(["attack_poss_density"] + list(additional_fields_to_return)))
+
     simulation_result = simulate_passes_chunked(
-        PLAYER_POS, BALL_POS, phi_grid, v0_grid, controlling_teams, player_teams, players, passers_to_exclude=None,
+        PLAYER_POS, BALL_POS, phi_grid, v0_grid, controlling_teams, player_teams, players,
+        passers_to_exclude=PASSERS_TO_EXCLUDE if passer_to_exclude_col is not None else None,
+        pass_start_location_offset=pass_start_location_offset,
+        time_offset_ball=time_offset_ball,
+        radial_gridsize=radial_gridsize,
+        b0=b0,
+        b1=b1,
+        player_velocity=player_velocity,
+        keep_inertial_velocity=keep_inertial_velocity,
+        use_max=use_max,
+        v_max=v_max,
+        a_max=a_max,
+        inertial_seconds=inertial_seconds,
+        tol_distance=tol_distance,
+        use_approx_two_point=use_approx_two_point,
+        v0_prob_aggregation_mode=v0_prob_aggregation_mode,
+        normalize=normalize,
+        use_efficient_sigmoid=use_efficient_sigmoid,
+
+        fields_to_return=fields_to_return,
     )
     if return_cropped_result:
-        simulation_result = crop_result_to_pitch(simulation_result)
+        simulation_result = crop_density_to_pitch(simulation_result)
 
     ### Add danger to simulation result
     # 1. Get attacking direction
     if infer_attacking_direction:
         attacking_direction_col = get_unused_column_name(df_tracking, "attacking_direction")
         df_tracking[attacking_direction_col] = infer_playing_direction(
-            df_tracking, team_col=tracking_team_col, period_col=period_col, possession_team_col=possession_team_col,
-            x_col=tracking_x_col
+            df_tracking, team_col=team_col, period_col=period_col, possession_team_col=possession_team_col, x_col=x_col
         )
     if attacking_direction_col is not None:
-        fr2playingdirection = df_tracking[[tracking_frame_col, attacking_direction_col]].set_index(tracking_frame_col).to_dict()[attacking_direction_col]
-        ATTACKING_DIRECTION = np.array([fr2playingdirection[frame] for frame in frame_to_idx])  # F
+        fr2playingdirection = df_tracking[[frame_col, attacking_direction_col]].set_index(frame_col).to_dict()[attacking_direction_col]
+        ATTACKING_DIRECTION = np.array([fr2playingdirection[frame] for frame in frame_to_index])  # F
     else:
-        ATTACKING_DIRECTION = np.ones(F)  # if no attacking direction is given, we assume always left-to-right
+        ATTACKING_DIRECTION = np.ones(F)  # if no attacking direction is given and we didn't infer it, we assume always left-to-right
+        warnings.warn("Neither 'attacking_direction_col' nor 'infer_attacking_direction' are specified, thus we assume always left-to-right to calculate danger and DAS")
+
     # 2. Calculate danger
     X = simulation_result.x_grid  # F x PHI x T
     Y = simulation_result.y_grid  # F x PHI x T
@@ -462,38 +583,55 @@ def get_dangerous_accessible_space(
     DANGER = _get_danger(DIST_TO_GOAL, OPENING_ANGLE)  # F x PHI x T
 
     # 3. Add danger to simulation result
-    dangerous_result = as_dangerous_result(simulation_result, DANGER)
+    dangerous_result = as_dangerous_result(simulation_result, DANGER, danger_weight)
 
     # Get AS and DAS
-    accessible_space = integrate_attacking_surface(simulation_result)  # F
-    das = integrate_attacking_surface(dangerous_result)  # F
-    fr2AS = pd.Series(accessible_space, index=df_tracking[tracking_frame_col].unique())
-    fr2DAS = pd.Series(das, index=df_tracking[tracking_frame_col].unique())
-    as_series = df_tracking[tracking_frame_col].map(fr2AS)
-    das_series = df_tracking[tracking_frame_col].map(fr2DAS)
+    accessible_space = integrate_surfaces(simulation_result).attack_poss  # F
+    das = integrate_surfaces(dangerous_result).attack_poss  # F
+    fr2AS = pd.Series(accessible_space, index=df_tracking[frame_col].unique())
+    fr2DAS = pd.Series(das, index=df_tracking[frame_col].unique())
+    as_series = df_tracking[frame_col].map(fr2AS)
+    das_series = df_tracking[frame_col].map(fr2DAS)
 
-    idx = df_tracking[tracking_frame_col].map(frame_to_idx)
+    frame_index = df_tracking[frame_col].map(frame_to_index)
+    player_index = df_tracking[player_col].map(player_to_index)
 
-    return as_series, das_series, idx, simulation_result, dangerous_result
+    ReturnValueDAS = collections.namedtuple("ReturnValueDAS", [
+        "acc_space", "das", "frame_index", "player_index", "simulation_result", "dangerous_result"
+    ])
+    return ReturnValueDAS(as_series, das_series, frame_index, player_index, simulation_result, dangerous_result)
 
 
 def infer_playing_direction(
-    df_tracking, team_col="team_id", period_col="period_id", possession_team_col="ball_possession", x_col="x",
+    df_tracking, team_col="team_id", period_col="period_id", possession_team_col="team_in_possession", x_col="x",
 ):
     """
     Automatically infer playing direction based on the mean x position of each teams in each period.
+    TODO idk if i like the syntax that you have to pass all the column names as individual parameters -> maybe dict?
 
-    >>> df_tracking = pd.DataFrame({"frame_id": [0, 0, 1, 1], "team_id": ["H", "A", "H", "A"], "ball_possession": ["H", "H", "A", "A"], "x": [1, 2, 3, 4], "y": [5, 6, 7, 8]})
-    >>> df_tracking["playing_direction"] = infer_playing_direction(df_tracking, team_col="team_id", period_col="frame_id", possession_team_col="ball_possession", x_col="x")
+    >>> df_tracking = pd.DataFrame({"period": [0, 0, 1, 1], "team_id": ["H", "A", "H", "A"], "team_in_possession": ["H", "H", "A", "A"], "x": [1, 2, 3, 4], "y": [5, 6, 7, 8]})
     >>> df_tracking
-       frame_id team_id ball_possession  x  y  playing_direction
-    0         0       H               H  1  5                1.0
-    1         0       A               H  2  6                1.0
-    2         1       H               A  3  7               -1.0
-    3         1       A               A  4  8               -1.0
+       period team_id team_in_possession  x  y
+    0       0       H                  H  1  5
+    1       0       A                  H  2  6
+    2       1       H                  A  3  7
+    3       1       A                  A  4  8
+    >>> df_tracking["playing_direction"] = infer_playing_direction(df_tracking, team_col="team_id", period_col="period", possession_team_col="team_in_possession", x_col="x")
+    >>> df_tracking
+       period team_id team_in_possession  x  y  playing_direction
+    0       0       H                  H  1  5                1.0
+    1       0       A                  H  2  6                1.0
+    2       1       H                  A  3  7               -1.0
+    3       1       A                  A  4  8               -1.0
     """
     playing_direction = {}
-    for period_id, df_tracking_period in df_tracking.groupby(period_col):
+    if period_col is None:
+        _period_col = get_unused_column_name(df_tracking, "period_id")
+        df_tracking[_period_col] = 0  # assume same period everywhere
+    else:
+        _period_col = period_col
+
+    for period_id, df_tracking_period in df_tracking.groupby(_period_col):
         x_mean = df_tracking_period.groupby(team_col)[x_col].mean()
         smaller_x_team = x_mean.idxmin()
         greater_x_team = x_mean.idxmax()
@@ -502,7 +640,7 @@ def infer_playing_direction(
     new_attacking_direction = pd.Series(index=df_tracking.index, dtype=np.float64)
 
     for period_id in playing_direction:
-        i_period = df_tracking[period_col] == period_id
+        i_period = df_tracking[_period_col] == period_id
         for team_id, direction in playing_direction[period_id].items():
             i_period_team_possession = i_period & (df_tracking[possession_team_col] == team_id)
             new_attacking_direction.loc[i_period_team_possession] = direction
@@ -510,10 +648,7 @@ def infer_playing_direction(
     return new_attacking_direction
 
 
-def plot_expected_completion_surface(
-    das_simulation_result, frame_index, plot_type_off="poss", plot_type_def=None, color_off="blue", color_def="red",
-    plot_gridpoints=True,
-):
+def plot_expected_completion_surface(das_simulation_result, attribute="attack_poss_density", frame_index=0, player_index=None, color="blue", plot_gridpoints=True):
     """ Plot a pass completion surface. """
     x_grid = das_simulation_result.x_grid[frame_index, :, :]
     y_grid = das_simulation_result.y_grid[frame_index, :, :]
@@ -521,41 +656,32 @@ def plot_expected_completion_surface(
     x = np.ravel(x_grid)  # F*PHI*T
     y = np.ravel(y_grid)  # F*PHI*T
 
-    for offdef, plot_type, color in [("off", plot_type_off, color_off), ("def", plot_type_def, color_def)]:
-        if plot_type is None:
-            continue
-        if offdef == "off":
-            if plot_type == "poss":
-                p = das_simulation_result.poss_density_att[frame_index, :, :]
-            elif plot_type == "prob":
-                p = das_simulation_result.prob_density_att[frame_index, :, :]
-            else:
-                raise ValueError(f"Unknown plot type: {plot_type}. Must be 'poss' or 'prob'.")
-        else:
-            if plot_type == "poss":
-                p = das_simulation_result.poss_density_def[frame_index, :, :]
-            elif plot_type == "prob":
-                p = das_simulation_result.prob_density_def[frame_index, :, :]
-            else:
-                raise ValueError(f"Unknown plot type: {plot_type}. Must be 'poss' or 'prob'.")
+    field = getattr(das_simulation_result, attribute)
 
-        z = np.ravel(p)  # F*PHI*T
+    if len(field.shape) == 3:
+        p = field[frame_index, :, :]
+    elif len(field.shape) == 4:
+        p = field[frame_index, player_index, :, :]
+    else:
+        raise ValueError(f"Internal package error: Field {attribute} simulation result to plot is not 3D or 4D")
 
-        areas = 10
-        absolute_scale = False
-        if absolute_scale:
-            levels = np.linspace(start=0, stop=1.1, num=areas + 1, endpoint=True)
-        else:
-            levels = np.linspace(start=0, stop=np.max(z)+0.00001, num=areas + 1, endpoint=True)
-        saturations = [x / (areas) for x in range(areas)]
-        base_color = matplotlib.colors.to_rgb(color)
+    z = np.ravel(p)  # F*PHI*T
 
-        colors = [_adjust_saturation(base_color, s) for s in saturations]
+    areas = 10
+    absolute_scale = False
+    if absolute_scale:
+        levels = np.linspace(start=0, stop=1.1, num=areas + 1, endpoint=True)
+    else:
+        levels = np.linspace(start=0, stop=np.max(z)+0.00001, num=areas + 1, endpoint=True)
+    saturations = [x / (areas) for x in range(areas)]
+    base_color = matplotlib.colors.to_rgb(color)
 
-        # Create a triangulation
-        triang = matplotlib.tri.Triangulation(x, y)
-        cp = plt.tricontourf(x, y, z.T, colors=colors, alpha=0.1, cmap=None, levels=levels)  # Comment in to use [0, 1] scale
-        plt.tricontourf(triang, z.T, colors=colors, alpha=0.1, cmap=None, levels=levels)  # Comment in to use [0, 1] scale
+    colors = [_adjust_saturation(base_color, s) for s in saturations]
+
+    # Create a triangulation
+    triang = matplotlib.tri.Triangulation(x, y)
+    cp = plt.tricontourf(x, y, z.T, colors=colors, alpha=0.1, cmap=None, levels=levels)  # Comment in to use [0, 1] scale
+    plt.tricontourf(triang, z.T, colors=colors, alpha=0.1, cmap=None, levels=levels)  # Comment in to use [0, 1] scale
 
     if plot_gridpoints:
         plt.plot(x, y, 'ko', ms=0.5)
