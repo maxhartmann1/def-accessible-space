@@ -2,6 +2,14 @@ import colorsys
 import numpy as np
 
 
+class _Sentinel:
+    def __eq__(self, other):
+        return isinstance(other, _Sentinel)
+
+
+_unset = _Sentinel()
+
+
 def get_unused_column_name(df, prefix):
     """
     >>> import pandas as pd
@@ -19,19 +27,20 @@ def get_unused_column_name(df, prefix):
     return new_column_name
 
 
-def _dist_to_opp_goal(x_norm, y_norm):
+def _dist_to_opp_goal(x_norm, y_norm, x_opp_goal):
     """
-    >>> _dist_to_opp_goal(0, 1)
+    >>> _dist_to_opp_goal(0, 1, 52.5)
     52.5
     """
     MAX_GOAL_POST_RADIUS = 0.06
     SEMI_GOAL_WIDTH_INNER_EDGE = 7.32 / 2
     SEMI_GOAL_WIDTH_CENTER = SEMI_GOAL_WIDTH_INNER_EDGE + MAX_GOAL_POST_RADIUS
+
     def _distance(x, y, x_target, y_target):
         return np.sqrt((x - x_target) ** 2 + (y - y_target) ** 2)
-    x_goal = 52.5
+
     y_goal = np.clip(y_norm, -SEMI_GOAL_WIDTH_CENTER, SEMI_GOAL_WIDTH_CENTER)
-    return _distance(x_norm, y_norm, x_goal, y_goal)
+    return _distance(x_norm, y_norm, x_opp_goal, y_goal)
 
 
 def _opening_angle_to_goal(x, y):
@@ -53,7 +62,8 @@ def _opening_angle_to_goal(x, y):
         return angle
 
     x_goal = 52.5
-    return np.abs(angle_between(np.array([x_goal - x, SEMI_GOAL_WIDTH_CENTER - y]), np.array([x_goal - x, -SEMI_GOAL_WIDTH_CENTER - y])))
+    return np.abs(angle_between(np.array([x_goal - x, SEMI_GOAL_WIDTH_CENTER - y]),
+                                np.array([x_goal - x, -SEMI_GOAL_WIDTH_CENTER - y])))
 
 
 def _adjust_saturation(color, saturation):

@@ -1,9 +1,12 @@
 import importlib
-import pytest
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import streamlit as st
+import pytest
+
 import accessible_space
+import streamlit as st
 
 
 def _get_butterfly_data():
@@ -12,13 +15,24 @@ def _get_butterfly_data():
         "player_id": ["a", "b", "x", "ball"],
         "x": [0, -50, 50, 0],
         "y": [0, 0, 0, 0],
-        "vx": [0, 0, 0, 0],
+        "vx": [0, 0, 0, 15],
         "vy": [0, 0, 0, 0],
         "team_id": ["H", "H", "A", None],
         "player_color": ["blue", "blue", "red", "black"],
         "team_in_possession": ["H"] * 4,
         "player_in_possession": ["a"] * 4,
         "attacking_direction": [1] * 4,
+        # "frame_id": [0, 0, 0, 0, 1],
+        # "player_id": ["a", "b", "x", "ball", "ball"],
+        # "x": [0, -50, 50, 0, 1],
+        # "y": [0, 0, 0, 0, 0],
+        # "vx": [0, 0, 0, 15, 15],
+        # "vy": [0, 0, 0, 0, 0],
+        # "team_id": ["H", "H", "A", None, None],
+        # "player_color": ["blue", "blue", "red", "black", "black"],
+        # "team_in_possession": ["H"] * 5,
+        # "player_in_possession": ["a"] * 5,
+        # "attacking_direction": [1] * 5,
     })
 
     ### Plotting
@@ -55,7 +69,7 @@ def _get_double_butterfly_data():
         "player_in_possession": ["a"] * 6,
     })
 
-    ### Plotting, TODO how to incorporate plotting cleanly into pytests
+    ### Plotting
     # plt.scatter(df_tracking["x"], df_tracking["y"], color=df_tracking["player_color"])
     # st.write(plt.gcf())
     # plt.show()
@@ -79,9 +93,8 @@ def test_as_symmetry():
         (24, 1, 250),
     ]:
         ret = accessible_space.get_dangerous_accessible_space(
-            df_tracking, passer_to_exclude_col="player_in_possession", n_angles=angles, v0_min=v0_min, n_v0=n_v0
+            df_tracking, passer_to_exclude_col="player_in_possession", n_angles=angles, v0_min=v0_min, n_v0=n_v0,
         )
-        st.write(angles, v0_min, n_v0, ret.acc_space.iloc[0], 3570)
         if np.isclose(ret.acc_space.iloc[0], 3570, atol=10):  # allow 10m² error here, 3570 = 105*68/2. This is very sensitive to the parameters though - we merely ensure that it's POSSIBLE to achieve this value.
             reaches_half_space = True
     assert reaches_half_space
@@ -108,7 +121,88 @@ def test_xc_symmetry():
     assert np.isclose(ret_safe.xc, 1 - ret_risky.xc, atol=1e-3)
 
 
-# TODO parameterize with different data
+def test_xc_parameters():
+    df_pass_safe, df_pass_risky, df_tracking = _get_butterfly_data()
+
+    for use_approx_two_point in [False, True]:
+        for keep_inertial_velocity in [False, True]:
+            for use_event_coordinates_as_ball_position in [False, True]:
+                for use_fixed_v0 in [False, True]:
+                    ret_safe = accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking, use_approx_two_point=use_approx_two_point, keep_inertial_velocity=keep_inertial_velocity, use_event_coordinates_as_ball_position=use_event_coordinates_as_ball_position, use_fixed_v0=use_fixed_v0, clip_to_pitch=False)
+
+                    df_tracking["vx"] = -df_tracking["vx"]
+                    df_tracking["x"] = -df_tracking["x"]
+                    ret_risky = accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking, use_approx_two_point=use_approx_two_point, keep_inertial_velocity=keep_inertial_velocity, use_event_coordinates_as_ball_position=use_event_coordinates_as_ball_position, use_fixed_v0=use_fixed_v0, clip_to_pitch=False)
+                    df_tracking["vx"] = -df_tracking["vx"]
+                    df_tracking["x"] = -df_tracking["x"]
+
+                    assert ret_safe.xc[0] > 0.95
+                    assert ret_risky.xc[0] < 0.05
+                    assert np.isclose(ret_safe.xc[0], 1 - ret_risky.xc[0], atol=1e-3)
+
+
+
+def test_coordinate_systems():
+    _, _, df_tracking = _get_butterfly_data()
+    for x_min, x_max, y_min, y_max in [
+        (-52.5, 52.5, -34, 34),
+        (0, 105, 0, 68),
+        (-1, 1, -1, 1),
+        (-2500, 2000, -2500, 1600),
+        (-200, -20, -200, -20),
+    ]:
+        ret = accessible_space.get_dangerous_accessible_space(
+            df_tracking, x_pitch_min=x_min, x_pitch_max=x_max, y_pitch_min=y_min, y_pitch_max=y_max, radial_gridsize=np.sqrt((x_max - x_min) ** 2 + (y_max - y_min) ** 2) / 50
+        )
+        assert np.alltrue(np.any(ret.simulation_result.x_grid <= x_min, axis=(1, 2)))
+        assert np.alltrue(np.any(ret.simulation_result.x_grid >= x_max, axis=(1, 2)))
+        assert np.alltrue(np.any(ret.simulation_result.y_grid <= y_min, axis=(1, 2)))
+        assert np.alltrue(np.any(ret.simulation_result.y_grid >= y_max, axis=(1, 2)))
+
+        plt.figure()
+        plt.xlim([x_min, x_max])
+        plt.ylim([y_min, y_max])
+        accessible_space.plot_expected_completion_surface(ret.simulation_result, "attack_poss_density", 0, color="blue")
+        accessible_space.plot_expected_completion_surface(ret.dangerous_result, "attack_poss_density", 0, color="red")
+        plt.title(f"Accessible space: {ret.acc_space.iloc[0]:.0f} m², DAS: {ret.das.iloc[0]:.2f} m²")
+        st.write(plt.gcf())
+
+
+def test_das_gained():
+    from .resources import df_passes, df_tracking
+
+    ret_safe = accessible_space.get_das_gained(df_passes, df_tracking)
+    df_passes["DAS_gained"] = ret_safe.das_gained
+    df_passes["AS_gained"] = ret_safe.as_gained
+    df_passes["AS"] = ret_safe.acc_space
+    df_passes["DAS"] = ret_safe.das
+    df_passes["AS_reception"] = ret_safe.acc_space_reception
+    df_passes["DAS_reception"] = ret_safe.das_reception
+
+    st.write("df_passes")
+    st.write(df_passes)
+
+
+def test_chunk_wise_simulation():
+    from .resources import df_tracking, df_passes
+
+    F_tracking = len(df_tracking["frame_id"].unique())
+    assert F_tracking > 1
+    F_event = len(df_passes["frame_id"].unique())
+    assert F_event > 1
+
+    for chunk_size in [500, 1, 2, 3, None, 0, -1]:
+        ret = accessible_space.get_expected_pass_completion(df_passes, df_tracking, chunk_size=chunk_size)
+        assert ret.xc.shape[0] == len(df_passes)
+        assert ret.event_frame_index.shape[0] == len(df_passes)
+        assert ret.tracking_frame_index.shape[0] == len(df_tracking)
+        assert ret.simulation_result.defense_cum_poss.shape[0] == F_event
+        ret_field = accessible_space.get_dangerous_accessible_space(df_tracking, chunk_size=chunk_size)
+        assert ret_field.acc_space.shape[0] == len(df_tracking)
+        assert ret_field.das.shape[0] == len(df_tracking)
+        assert ret_field.simulation_result.defense_poss_density.shape[0] == F_tracking
+
+
 def test_cum_prob_sum_is_1():
     _, _, df_tracking = _get_butterfly_data()
     ret = accessible_space.get_dangerous_accessible_space(
@@ -126,7 +220,6 @@ def test_simulation_result_dimensions():
     importlib.reload(accessible_space)
     importlib.reload(accessible_space)
     ret = accessible_space.get_dangerous_accessible_space(df_tracking, n_angles=n_angles)
-    st.write("ret.simulation_result.attack_cum_poss", ret.simulation_result.attack_cum_poss.shape)
 
     fields = [
         ret.simulation_result.attack_poss_density,
@@ -144,8 +237,6 @@ def test_simulation_result_dimensions():
     ]
     T = ret.simulation_result.attack_poss_density.shape[2]
     for field in fields:
-        st.write("a")
-        st.write(field[0])
         assert len(field.shape) == 3
         assert field.shape[0] == F
         assert field.shape[1] == n_angles
@@ -247,30 +338,6 @@ def test_das_is_smaller_than_as():
     assert (ret.das <= ret.acc_space).all()
 
 
-# def test_cum_prob_is_consistent_with_prob_density():
-#     _, _, df_tracking = _get_butterfly_data()
-#     ret = accessible_space.get_dangerous_accessible_space(
-#         df_tracking, passer_to_exclude_col="player_in_possession", n_angles=4, n_v0=1, radial_gridsize=5,
-#     )
-#
-#     prob_cum = ret.simulation_result.attack_cum_prob
-#     prob_density = ret.simulation_result.attack_prob_density
-#     r = ret.simulation_result.r_grid
-#
-#     st.write("prob_cum", prob_cum.shape)
-#     st.write("prob_density", prob_density.shape)
-#     st.write("r", r.shape)
-#
-#     prob_cum2 = scipy.integrate.cumulative_trapezoid(y=prob_density, x=r[np.newaxis, np.newaxis, :], initial=0, axis=-1)
-#     st.write("prob_cum2", prob_cum2.shape)
-#     st.write(prob_cum2[0])
-#     st.write("prob_cum", prob_cum.shape)
-#     st.write(prob_cum[0])
-#     st.write((prob_cum - prob_cum2)[0])
-#
-#     assert np.allclose(prob_cum, prob_cum2), prob_cum - prob_cum2
-
-
 def test_player_level_consistent_with_team_level():
     _, _, df_tracking = _get_butterfly_data()
     ret = accessible_space.get_dangerous_accessible_space(df_tracking)
@@ -319,34 +386,51 @@ def test_poss_never_below_prob():
         assert np.alltrue(prob <= poss)  # all smaller or equal
 
 
-def test_pitch_clipping():
+@pytest.mark.parametrize("x_min,x_max,y_min,y_max", [
+    (-52.5, 52.5, -34, 34),
+    (0, 105, 0, 68),
+    (-1, 1, -1, 1),
+    (1500, 2000, 1500, 1600),
+    (20, 200, 20, 200),
+])
+def test_pitch_clipping(x_min, x_max, y_min, y_max):
     _, _, df_tracking = _get_butterfly_data()
+    importlib.reload(accessible_space)
     ret = accessible_space.get_dangerous_accessible_space(df_tracking)
-    cropped_result = accessible_space.crop_density_to_pitch(ret.simulation_result)
+    cropped_result = accessible_space.clip_simulation_result_to_pitch(ret.simulation_result, x_min, x_max, y_min, y_max)
 
     x_grid = ret.simulation_result.x_grid
     y_grid = ret.simulation_result.y_grid
+    i_in_pitch = (x_grid >= x_min) & (x_grid <= x_max) & (y_grid >= y_min) & (y_grid <= y_max)
 
-    i_in_pitch = (x_grid >= -52.5) & (x_grid <= 52.5) & (y_grid <= 34) & (y_grid >= -34)
-    for field, cropped_field in [
-        (ret.simulation_result.attack_poss_density, cropped_result.attack_poss_density),
-        (ret.simulation_result.defense_poss_density, cropped_result.defense_poss_density),
-        (ret.simulation_result.attack_prob_density, cropped_result.attack_prob_density),
-        (ret.simulation_result.defense_prob_density, cropped_result.defense_prob_density),
-        (ret.simulation_result.p0_density, cropped_result.p0_density),
+    for field_str in [
+        "attack_poss_density", "defense_poss_density", "attack_prob_density", "defense_prob_density", "p0_density",
     ]:
-        field[~i_in_pitch] = 0
-        assert np.alltrue(field[i_in_pitch] == cropped_field[i_in_pitch])
-        assert np.alltrue(field[~i_in_pitch] == 0)
+        field = getattr(ret.simulation_result, field_str)
+        cropped_field = getattr(cropped_result, field_str)
+        i_in_pitch_player = np.repeat(i_in_pitch[:, np.newaxis, :, :], field.shape[1], axis=1) if len(field.shape) == 4 else i_in_pitch
 
-    for player_field, cropped_field in [
-        (ret.simulation_result.player_poss_density, cropped_result.player_poss_density),
-        (ret.simulation_result.player_prob_density, cropped_result.player_prob_density),
+        assert np.alltrue(field[i_in_pitch_player] == cropped_field[i_in_pitch_player])
+        assert np.alltrue(cropped_field[~i_in_pitch_player] == 0)
+
+    for field_str in [
+        "attack_cum_prob", "defense_cum_prob", "attack_cum_poss", "defense_cum_poss", "cum_p0", "player_cum_prob",
+        "player_cum_poss"
     ]:
-        i_in_pitch_player = np.repeat(i_in_pitch[:, np.newaxis, :, :], player_field.shape[1], axis=1)
-        player_field[~i_in_pitch_player] = 0  # TODO boolean comparison newaxis
-        assert np.alltrue(player_field[i_in_pitch_player] == cropped_field[i_in_pitch_player])
-        assert np.alltrue(player_field[~i_in_pitch_player] == 0)
+        cum_field = getattr(ret.simulation_result, field_str)
+        cropped_field = getattr(cropped_result, field_str)
+        i_in_pitch_field = i_in_pitch if len(cum_field.shape) == 3 else np.repeat(i_in_pitch[:, np.newaxis, :, :], cum_field.shape[1], axis=1)
+
+        assert np.alltrue(cum_field[i_in_pitch_field] == cropped_field[i_in_pitch_field])
+
+        def array_to_list_of_non_nan_1d_slices(array):
+            reshaped_array = array.reshape(-1, array.shape[-1])
+            list_of_arrays = [row[~np.isnan(row)] for row in reshaped_array]
+            return list_of_arrays
+
+        field_outside_pitch = np.where(~i_in_pitch_field, cropped_field, np.nan)
+        for time_slice_outside_pitch in array_to_list_of_non_nan_1d_slices(field_outside_pitch):
+            assert len(np.unique(time_slice_outside_pitch)) == 1
 
 
 def test_surface_integration():
@@ -410,7 +494,7 @@ def test_minimal_xc_runs_error_free():
     accessible_space.get_expected_pass_completion(df_passes, df_tracking)
 
 
-def test_fields_to_return_are_present():  # TODO fix
+def test_fields_to_return_are_present():
     _, _, df_tracking = _get_butterfly_data()
 
     for field in [
@@ -455,7 +539,6 @@ def test_fields_to_return_others_are_not_present():
     das_fields = ["attack_poss_density"]
 
     for field in all_fields:
-        st.write(f"### {field}")
         ret = accessible_space.get_dangerous_accessible_space(df_tracking, additional_fields_to_return=[field])
 
         none_fields = [ret_field for ret_field in all_fields if getattr(ret.simulation_result, ret_field) is None]
@@ -467,63 +550,64 @@ def test_fields_to_return_others_are_not_present():
         assert len(remaining_fields) == 0
         assert set(present_fields) == expected_fields
 
-    for field1, field2 in zip(all_fields, all_fields):
-        st.write(f"### {field1}, {field2}")
-        if field1 == field2:
-            continue
-        ret = accessible_space.get_dangerous_accessible_space(df_tracking, additional_fields_to_return=[field1, field2])
+    for field1 in all_fields:
+        for field2 in all_fields:
+            if field1 == field2:
+                continue
+            ret = accessible_space.get_dangerous_accessible_space(df_tracking, additional_fields_to_return=[field1, field2])
 
-        none_fields = [ret_field for ret_field in all_fields if getattr(ret.simulation_result, ret_field) is None]
-        present_fields = [ret_field for ret_field in all_fields if isinstance(getattr(ret.simulation_result, ret_field), np.ndarray)]
-        remaining_fields = [ret_field for ret_field in all_fields if ret_field not in none_fields and ret_field not in present_fields]
+            none_fields = [ret_field for ret_field in all_fields if getattr(ret.simulation_result, ret_field) is None]
+            present_fields = [ret_field for ret_field in all_fields if isinstance(getattr(ret.simulation_result, ret_field), np.ndarray)]
+            remaining_fields = [ret_field for ret_field in all_fields if ret_field not in none_fields and ret_field not in present_fields]
 
-        expected_fields = {field1, field2}.union(set(das_fields))
+            expected_fields = {field1, field2}.union(set(das_fields))
 
-        assert len(remaining_fields) == 0
-        assert set(present_fields) == expected_fields
-        for present_field in present_fields:
-            field_data = getattr(ret.simulation_result, present_field)
-            assert np.alltrue(field_data > 0)
-            assert np.alltrue(~np.isnan(field_data))
-
-    for field1, field2, field3 in zip(all_fields, all_fields, all_fields):
-        st.write(f"### {field1}, {field2}, {field3}")
-        if field1 == field2:
-            continue
-        ret = accessible_space.get_dangerous_accessible_space(df_tracking, additional_fields_to_return=[field1, field2, field3])
-
-        none_fields = [ret_field for ret_field in all_fields if getattr(ret.simulation_result, ret_field) is None]
-        present_fields = [ret_field for ret_field in all_fields if isinstance(getattr(ret.simulation_result, ret_field), np.ndarray)]
-        remaining_fields = [ret_field for ret_field in all_fields if ret_field not in none_fields and ret_field not in present_fields]
-
-        expected_fields = {field1, field2, field3}.union(set(das_fields))
-
-        assert len(remaining_fields) == 0
-        assert set(present_fields) == expected_fields
-        for present_field in present_fields:
-            field_data = getattr(ret.simulation_result, present_field)
-            assert np.alltrue(field_data > 0)
-            assert np.alltrue(~np.isnan(field_data))
+            assert len(remaining_fields) == 0
+            assert set(present_fields) == expected_fields
+            for present_field in present_fields:
+                field_data = getattr(ret.simulation_result, present_field)
+                assert np.alltrue(~np.isnan(field_data))
+                assert np.any(field_data != 0)
 
 
-    for field1, field2, field3, field4, field5 in zip(all_fields, all_fields, all_fields, all_fields, all_fields):
-        st.write(f"### {field1}, {field2}, {field3}, {field4}, {field5}")
-        if field1 == field2:
-            continue
-        ret = accessible_space.get_dangerous_accessible_space(df_tracking, additional_fields_to_return=[field1, field2, field3, field4, field5])
+def test_surface_plot():
+    _, _, df_tracking = _get_butterfly_data()
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking)
 
-        none_fields = [ret_field for ret_field in all_fields if getattr(ret.simulation_result, ret_field) is None]
-        present_fields = [ret_field for ret_field in all_fields if isinstance(getattr(ret.simulation_result, ret_field), np.ndarray)]
-        remaining_fields = [ret_field for ret_field in all_fields if ret_field not in none_fields and ret_field not in present_fields]
+    def _plot():
+        plt.figure()
+        plt.xlim([-52.5, 52.5])
+        plt.ylim([-34, 34])
+        plt.scatter(df_tracking["x"], df_tracking["y"], color=df_tracking["player_color"])
 
-        expected_fields = {field1, field2, field3, field4, field5}.union(set(das_fields))
+    _plot()
+    accessible_space.plot_expected_completion_surface(ret.simulation_result, "attack_poss_density", frame_index=0)
+    # st.write("attack_poss_density")
+    # st.write(plt.gcf())
+    _plot()
+    accessible_space.plot_expected_completion_surface(ret.simulation_result, "attack_prob_density", frame_index=0)
+    # st.write("attack_prob_density")
+    # st.write(plt.gcf())
+    _plot()
+    accessible_space.plot_expected_completion_surface(ret.simulation_result, "defense_poss_density", frame_index=0)
+    # st.write("defense_poss_density")
+    # st.write(plt.gcf())
+    _plot()
+    accessible_space.plot_expected_completion_surface(ret.simulation_result, "defense_prob_density", frame_index=0)
+    # st.write("defense_prob_density")
+    # st.write(plt.gcf())
+    _plot()
+    accessible_space.plot_expected_completion_surface(ret.simulation_result, "player_prob_density", frame_index=0, player_index=0)
+    # st.write("player_prob_density")
+    # st.write(plt.gcf())
+    _plot()
+    accessible_space.plot_expected_completion_surface(ret.simulation_result, "player_poss_density", frame_index=0, player_index=0)
+    # st.write("player_poss_density")
+    # st.write(plt.gcf())
 
-        assert len(remaining_fields) == 0
-        assert set(present_fields) == expected_fields
-        for present_field in present_fields:
-            field_data = getattr(ret.simulation_result, present_field)
-            assert np.alltrue(field_data > 0)
-            assert np.alltrue(~np.isnan(field_data))
+    with pytest.raises(ValueError, match=f"no player index is given"):
+        _plot()
+        accessible_space.plot_expected_completion_surface(ret.simulation_result, "player_prob_density", frame_index=0)
 
 
 def test_additional_defender_decreases_as_and_additional_attacker_increases_as():
@@ -532,7 +616,6 @@ def test_additional_defender_decreases_as_and_additional_attacker_increases_as()
     def get_as_and_das(_df_tracking):
         ret_baseline = accessible_space.get_dangerous_accessible_space(
             _df_tracking, infer_attacking_direction=False, attacking_direction_col="attacking_direction",
-            n_v0=100, v0_min=1  # TODO removing this breaks the test - check why. Likely AS/DAS dont converge.
         )
         return ret_baseline.acc_space.iloc[0], ret_baseline.das.iloc[0]
 
@@ -578,3 +661,7 @@ def test_additional_defender_decreases_as_and_additional_attacker_increases_as()
                     as_with_extra_attacker, das_with_extra_attacker = get_as_and_das(df_tracking_extra_attacker)
                     assert as_with_extra_attacker >= baseline_as, f"{new_x=}, {new_y=}, {new_vx=} {new_vy=}"
                     assert das_with_extra_attacker >= baseline_das
+
+# TODO add back
+# def test_validation_runs_error_free():
+#     accessible_space.validation_dashboard()

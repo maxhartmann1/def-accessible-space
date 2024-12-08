@@ -30,6 +30,7 @@ df_tracking["period_id"] = 0
 
 df_passes = pd.DataFrame({
     "frame_id": [0, 6, 14],
+    "target_frame_id": [6, 9, 16],
     "player_id": ["A", "B", "C"],  # Players making the passes
     "receiver_id": ["B", "X", "Y"],  # Intended receivers
     "team_id": ["Home", "Home", "Home"],  # Team of players making the passes
@@ -37,6 +38,6 @@ df_passes = pd.DataFrame({
     "y": [0, 10.5, -12.9],  # Y coordinate where the pass is made
     "x_target": [20, 15, 49],  # X target of the pass (location of receiver)
     "y_target": [30, 30, -1],  # Y target of the pass (location of receiver)
-    "pass_outcome": ["successful", "failed", "failed"]  # Correct pass outcomes
+    "pass_outcome": [1, 0, 0]  # Correct pass outcomes
 })
 df_passes["event_string"] = df_passes.apply(lambda row: f"{row['frame_id']}: Pass {row['player_id']} -> {row['receiver_id']} ({row['pass_outcome']})", axis=1)

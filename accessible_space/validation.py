@@ -742,7 +742,7 @@ def validate_multiple_matches(
                 event_player_col="player_id", tracking_player_col="player_id", tracking_team_col="team_id",
                 ball_tracking_player_id="ball",
                 tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_v_col="v",
-                tracking_ball_possession_col="ball_possession",
+                tracking_team_in_possession_col="ball_possession",
 
                 n_frames_after_pass_for_v0=5, fallback_v0=10,
                 chunk_size=chunk_size,
@@ -870,7 +870,7 @@ def validate_multiple_matches(
             event_team_col="team_id",
             event_player_col="player_id", tracking_player_col="player_id", tracking_team_col="team_id",
             ball_tracking_player_id="ball",
-            tracking_ball_possession_col="ball_possession",
+            tracking_team_in_possession_col="ball_possession",
             tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_v_col="v",
             n_frames_after_pass_for_v0=5, fallback_v0=10, chunk_size=chunk_size,
             **best_parameters,
@@ -996,7 +996,7 @@ def validation_dashboard():
 
     # validate()
     n_steps = st.number_input("Number of simulations", value=100)
-    use_prefit = st.checkbox("Use prefit", value=False)
+    use_prefit = st.checkbox("Use prefit", value=True)
     validate_multiple_matches(
         dfs_tracking=dfs_tracking, dfs_passes=dfs_passes, outcome_col="success", n_steps=n_steps, use_prefit=use_prefit
     )

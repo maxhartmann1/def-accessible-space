@@ -1,4 +1,6 @@
 import collections
+import math
+import sys
 
 import numpy as np
 import scipy.integrate
@@ -141,6 +143,7 @@ def simulate_passes(
         "player_prob_density",  # F x P x PHI x T
         "player_poss_density",  # F x P x PHI x T
     ),
+    x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
 
     # Model parameters
     pass_start_location_offset=_DEFAULT_PASS_START_LOCATION_OFFSET,
@@ -165,23 +168,25 @@ def simulate_passes(
     # Simulate a pass from player A straight to the right towards a defender B who is 50m away.
     >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density.shape, res.defense_poss_density
-    ((1, 1, 11), array([[[4.04061215e-05, 6.93665348e-05, 2.44880664e-04, 6.66617232e-02,
+    ((1, 1, 13), array([[[4.04061215e-05, 6.93665348e-05, 2.44880664e-04, 6.66617232e-02,
              6.66666667e-02, 6.63364931e-02, 4.10293354e-04, 1.45308093e-04,
-             8.82879207e-05, 6.34066099e-05, 4.94660755e-05]]]))
+             8.82879207e-05, 6.34066099e-05, 4.94660755e-05, 4.05506393e-05,
+             3.43581543e-05]]]))
     >>> res.attack_cum_prob.shape, res.attack_cum_prob  # F x PHI x T
-    ((1, 1, 11), array([[[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]]))
+    ((1, 1, 13), array([[[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]]))
     >>> res.phi_grid.shape, res.phi_grid
     ((1, 1), array([[0]]))
     >>> res.r_grid.shape, res.r_grid
-    ((11,), array([  0.2821896,  15.2821896,  30.2821896,  45.2821896,  60.2821896,
+    ((13,), array([  0.2821896,  15.2821896,  30.2821896,  45.2821896,  60.2821896,
             75.2821896,  90.2821896, 105.2821896, 120.2821896, 135.2821896,
-           150.2821896]))
+           150.2821896, 165.2821896, 180.2821896]))
     >>> res.x_grid.shape, res.x_grid
-    ((1, 1, 11), array([[[  0.2821896,  15.2821896,  30.2821896,  45.2821896,
+    ((1, 1, 13), array([[[  0.2821896,  15.2821896,  30.2821896,  45.2821896,
               60.2821896,  75.2821896,  90.2821896, 105.2821896,
-             120.2821896, 135.2821896, 150.2821896]]]))
+             120.2821896, 135.2821896, 150.2821896, 165.2821896,
+             180.2821896]]]))
     >>> res.y_grid.shape, res.y_grid
-    ((1, 1, 11), array([[[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]]))
+    ((1, 1, 13), array([[[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]]))
     """
     _assert_matrix_consistency(PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_teams, player_teams, players, passers_to_exclude)
 
@@ -190,7 +195,7 @@ def simulate_passes(
 
     ### 1. Calculate ball trajectory
     # 1.1 Calculate spatial grid
-    max_pass_length = 150
+    max_pass_length = np.sqrt((x_pitch_max - x_pitch_min) ** 2 + (y_pitch_max - y_pitch_min) ** 2) + radial_gridsize * 3  # T
     D_BALL_SIM = np.arange(pass_start_location_offset, max_pass_length + pass_start_location_offset + radial_gridsize, radial_gridsize)  # T
 
     # 1.2 Calculate temporal grid
@@ -291,8 +296,7 @@ def simulate_passes(
     pr_cum_prob_vagg = (np.mean(pr_cum_prob, axis=2) if v0_prob_aggregation_mode == "mean" else np.max(pr_cum_prob, axis=2)) if _should_return_any_of(["attack_cum_prob", "defense_cum_prob", "player_cum_prob", "cum_p0"]) else None  # F x P x PHI x T
 
     # 3.8 Normalize
-    if normalize:  # normalize:
-        # TODO: Normalization is hard because the prob-/possibilities are time-dependent AND need to be normalized w.r.t both the player- and the time-axis.
+    if normalize:
         # Normalize cumulative probability
         p_cum_sum = cum_p0_vagg + pr_cum_prob_vagg.sum(axis=1) if _should_return_any_of(["attack_cum_prob", "defense_cum_prob", "player_cum_prob", "cum_p0"]) else None  # F x PHI x T
         cum_p0_vagg = cum_p0_vagg / p_cum_sum if _should_return_any_of(["cum_p0"]) else None
@@ -302,6 +306,8 @@ def simulate_passes(
         dpr_over_dx_vagg_poss_times_dx = player_poss_density * DX if _should_return_any_of(["attack_cum_poss", "attack_poss_density", "defense_cum_poss", "defense_poss_density", "player_cum_poss", "player_poss_density"]) else None  # F x P x PHI x T
         num_max = np.max(dpr_over_dx_vagg_poss_times_dx, axis=(1, 3)) if _should_return_any_of(["attack_cum_poss", "attack_poss_density", "defense_cum_poss", "defense_poss_density", "player_cum_poss", "player_poss_density"]) else None  # F x PHI
         player_poss_density = player_poss_density / num_max[:, np.newaxis, :, np.newaxis] if _should_return_any_of(["attack_cum_poss", "attack_poss_density", "defense_cum_poss", "defense_poss_density", "player_cum_poss", "player_poss_density"]) else None  # F x P x PHI x T
+
+        # TODO: Normalization is hard because the prob-/possibilities are time-dependent AND need to be normalized w.r.t both the player- and the time-axis.
 
     # 3.9 Aggregate over players (Individual level -> Team level)
     attack_prob_density = np.nansum(np.where(player_is_attacking[:, :, np.newaxis, np.newaxis], player_prob_density, 0), axis=1) if _should_return_any_of(["attack_prob_density"]) else None  # F x PHI x T
@@ -343,12 +349,13 @@ def simulate_passes(
         y_grid=Y_BALL_SIM,  # F x PHI x T
     )
 
-    # set fields not to return to zero
+    # Set fields not to return to zero
     for field in _result_fields:
         if field in ["phi_grid", "r_grid", "x_grid", "y_grid"]:
             continue
         if field not in fields_to_return:
             result = result._replace(**{field: None})
+
     return result
 
 
@@ -378,6 +385,7 @@ def simulate_passes_chunked(
         "player_prob_density",  # F x P x PHI x T
         "player_poss_density",  # F x P x PHI x T
     ),
+    x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
 
     # Model parameters
     pass_start_location_offset=_DEFAULT_PASS_START_LOCATION_OFFSET,
@@ -402,10 +410,13 @@ def simulate_passes_chunked(
 
     >>> res = simulate_passes_chunked(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density.shape, res.defense_poss_density
-    ((1, 1, 11), array([[[4.04061215e-05, 6.93665348e-05, 2.44880664e-04, 6.66617232e-02,
+    ((1, 1, 13), array([[[4.04061215e-05, 6.93665348e-05, 2.44880664e-04, 6.66617232e-02,
              6.66666667e-02, 6.63364931e-02, 4.10293354e-04, 1.45308093e-04,
-             8.82879207e-05, 6.34066099e-05, 4.94660755e-05]]]))
+             8.82879207e-05, 6.34066099e-05, 4.94660755e-05, 4.05506393e-05,
+             3.43581543e-05]]]))
     """
+    if chunk_size is None or chunk_size <= 0:
+        chunk_size = PLAYER_POS.shape[0]
     _assert_matrix_consistency(PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_teams, player_teams, players, passers_to_exclude)
 
     F = PLAYER_POS.shape[0]
@@ -431,6 +442,7 @@ def simulate_passes_chunked(
             PLAYER_POS_chunk, BALL_POS_chunk, phi_grid_chunk, v0_grid_chunk, passer_team_chunk, player_teams, players,
             passers_to_exclude_chunk,
             fields_to_return,
+            x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max,
             pass_start_location_offset,
             time_offset_ball,
             radial_gridsize,
@@ -493,7 +505,9 @@ def simulate_passes_chunked(
     return full_result
 
 
-def crop_density_to_pitch(simulation_result: Result) -> Result:
+def clip_simulation_result_to_pitch(
+    simulation_result: Result, x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
+) -> Result:
     """
     Set all data points that are outside the pitch to zero (e.g. for DAS computation)
 
@@ -501,30 +515,88 @@ def crop_density_to_pitch(simulation_result: Result) -> Result:
     >>> res.defense_poss_density
     array([[[4.04061215e-05, 6.93665348e-05, 2.44880664e-04, 6.66617232e-02,
              6.66666667e-02, 6.63364931e-02, 4.10293354e-04, 1.45308093e-04,
-             8.82879207e-05, 6.34066099e-05, 4.94660755e-05]]])
-    >>> crop_density_to_pitch(res).defense_poss_density
+             8.82879207e-05, 6.34066099e-05, 4.94660755e-05, 4.05506393e-05,
+             3.43581543e-05]]])
+    >>> clip_simulation_result_to_pitch(res).defense_poss_density
     array([[[4.04061215e-05, 6.93665348e-05, 2.44880664e-04, 6.66617232e-02,
              0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-             0.00000000e+00, 0.00000000e+00, 0.00000000e+00]]])
+             0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+             0.00000000e+00]]])
     """
     x = simulation_result.x_grid
     y = simulation_result.y_grid
 
-    on_pitch_mask = ((x >= -52.5) & (x <= 52.5) & (y >= -34) & (y <= 34))  # F x PHI x T
+    if x_pitch_min > x_pitch_max:
+        raise ValueError("x_pitch_min must be smaller than x_pitch_max")
+    if y_pitch_min > y_pitch_max:
+        raise ValueError("y_pitch_min must be smaller than y_pitch_max")
 
+    on_pitch_mask = ((x >= x_pitch_min) & (x <= x_pitch_max) & (y >= y_pitch_min) & (y <= y_pitch_max))  # F x PHI x T
+
+    for cumulative_field in ["attack_cum_prob", "attack_cum_poss", "defense_cum_prob", "defense_cum_poss", "cum_p0", "player_cum_prob", "player_cum_poss"]:
+        cum_field_data = getattr(simulation_result, cumulative_field)
+        if cum_field_data is None:
+            continue
+
+        on_pitch_mask_field = on_pitch_mask if len(cum_field_data.shape) == 3 else np.repeat(on_pitch_mask[:, np.newaxis, :, :], cum_field_data.shape[1], axis=1)
+
+        start_value = 0 if cumulative_field != "cum_p0" else 1
+        updated_cum = cum_field_data.copy()
+        for i in range(cum_field_data.shape[-1]):
+            updated_cum[..., i] = np.where(on_pitch_mask_field[..., i], cum_field_data[..., i], updated_cum[..., i-1] if i > 0 else start_value)
+            if cumulative_field == "attack_cum_prob":
+                if i > 0:
+                    assert np.alltrue(on_pitch_mask_field[..., i] | (updated_cum[..., i] == updated_cum[..., i-1]))
+        # for i in range(cum_field_data.shape[-1]):
+        #     if i > 0:
+        #         assert np.alltrue(on_pitch_mask_field[..., i] | (updated_cum[..., i] == updated_cum[..., i - 1]))
+
+        # updated_cum = np.where(~on_pitch_mask_field, updated_cum, np.nan)
+        # st.write("x", x.shape)
+        # st.write(x[0, ...])
+        # st.write("y", y.shape)
+        # st.write(y[0, ...])
+        # st.write("updated_cum", updated_cum.shape)
+        # st.write(updated_cum[0, 0, ...])
+        # assert ~np.isnan(updated_cum).any()
+        # st.write("np.unique(updated_cum[0, 0, ...])")
+        # st.write(np.unique(updated_cum[0, 0, ...]))
+        # assert len(np.unique(updated_cum[0, 0, ...])) == 2
+        #
+        def array_to_list_of_1d_slices(array):
+            # Reshape to a 2D array, where each row corresponds to the last dimension
+            reshaped_array = array.reshape(-1, array.shape[-1])
+            list_of_arrays = [row for row in reshaped_array]
+            return list_of_arrays
+
+        for time_slice in array_to_list_of_1d_slices(updated_cum):
+            x = np.unique(time_slice[~np.isnan(time_slice)])
+            # assert len(x) == 1
+
+        simulation_result = simulation_result._replace(**{cumulative_field: updated_cum})
+
+    density_replacement_value = 0
     simulation_result = simulation_result._replace(
-        attack_prob_density=np.where(on_pitch_mask, simulation_result.attack_prob_density, 0) if simulation_result.attack_prob_density is not None else None,
-        attack_poss_density=np.where(on_pitch_mask, simulation_result.attack_poss_density, 0) if simulation_result.attack_poss_density is not None else None,
-        defense_prob_density=np.where(on_pitch_mask, simulation_result.defense_prob_density, 0) if simulation_result.defense_prob_density is not None else None,
-        defense_poss_density=np.where(on_pitch_mask, simulation_result.defense_poss_density, 0) if simulation_result.defense_poss_density is not None else None,
-        p0_density=np.where(on_pitch_mask, simulation_result.p0_density, 0) if simulation_result.p0_density is not None else None,
-        player_prob_density=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_prob_density, 0) if simulation_result.player_prob_density is not None else None,
-        player_poss_density=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_poss_density, 0) if simulation_result.player_poss_density is not None else None,
+        attack_prob_density=np.where(on_pitch_mask, simulation_result.attack_prob_density, density_replacement_value) if simulation_result.attack_prob_density is not None else None,
+        attack_poss_density=np.where(on_pitch_mask, simulation_result.attack_poss_density, density_replacement_value) if simulation_result.attack_poss_density is not None else None,
+        defense_prob_density=np.where(on_pitch_mask, simulation_result.defense_prob_density, density_replacement_value) if simulation_result.defense_prob_density is not None else None,
+        defense_poss_density=np.where(on_pitch_mask, simulation_result.defense_poss_density, density_replacement_value) if simulation_result.defense_poss_density is not None else None,
+        p0_density=np.where(on_pitch_mask, simulation_result.p0_density, density_replacement_value) if simulation_result.p0_density is not None else None,
+        player_prob_density=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_prob_density, density_replacement_value) if simulation_result.player_prob_density is not None else None,
+        player_poss_density=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_poss_density, density_replacement_value) if simulation_result.player_poss_density is not None else None,
+
+        # attack_cum_prob=np.where(on_pitch_mask, simulation_result.attack_cum_prob, density_replacement_value) if simulation_result.attack_cum_prob is not None else None,
+        # attack_cum_poss=np.where(on_pitch_mask, simulation_result.attack_cum_poss, density_replacement_value) if simulation_result.attack_cum_poss is not None else None,
+        # defense_cum_prob=np.where(on_pitch_mask, simulation_result.defense_cum_prob, density_replacement_value) if simulation_result.defense_cum_prob is not None else None,
+        # defense_cum_poss=np.where(on_pitch_mask, simulation_result.defense_cum_poss, density_replacement_value) if simulation_result.defense_cum_poss is not None else None,
+        # cum_p0=np.where(on_pitch_mask, simulation_result.cum_p0, density_replacement_value) if simulation_result.cum_p0 is not None else None,
+        # player_cum_prob=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_cum_prob, density_replacement_value) if simulation_result.player_cum_prob is not None else None,
+        # player_cum_poss=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_cum_poss, density_replacement_value) if simulation_result.player_cum_poss is not None else None,
     )
     return simulation_result
 
 
-def integrate_surfaces(result: Result):
+def integrate_surfaces(result: Result, x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34):
     """
     Integrate attacking possibility density in result to obtain surface area (AS/DAS)
 
@@ -532,17 +604,20 @@ def integrate_surfaces(result: Result):
     >>> res.attack_poss_density
     array([[[2.57353741e-03, 2.11363527e-04, 1.09952435e-04, 4.50749277e-05,
              1.25566766e-05, 3.72947419e-06, 1.89161761e-06, 1.61805922e-06,
-             1.41556450e-06, 1.25840005e-06, 1.13271995e-06],
+             1.41556450e-06, 1.25840005e-06, 1.13271995e-06, 1.02988309e-06,
+             9.44165893e-07],
             [6.66666667e-02, 5.47601482e-03, 2.85289793e-03, 1.92762472e-03,
              1.45486398e-03, 1.16798493e-03, 9.75438331e-04, 8.37299470e-04,
-             7.33378193e-04, 6.52369824e-04, 5.87453284e-04],
+             7.33378193e-04, 6.52369824e-04, 5.87453284e-04, 5.34269519e-04,
+             4.89902959e-04],
             [6.66666667e-02, 5.47661163e-03, 2.85412423e-03, 1.92937880e-03,
              1.45695096e-03, 1.17021957e-03, 9.77696205e-04, 8.39511551e-04,
-             7.35510810e-04, 6.54409110e-04, 5.89395847e-04]]])
+             7.35510810e-04, 6.54409110e-04, 5.89395847e-04, 5.36117293e-04,
+             4.91660429e-04]]])
     >>> integrate_surfaces(res)
     Areas(attack_prob=array([4.36786127]), attack_poss=array([85.18623857]), defense_prob=array([211.08322005]), defense_poss=array([378.55149779]), player_prob=array([[  4.36786127, 211.08322005]]), player_poss=array([[ 85.18623857, 378.55149779]]))
     """
-    result = crop_density_to_pitch(result)
+    result = clip_simulation_result_to_pitch(result, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max)
 
     # 1. Get r-part of area elements
     r_grid = result.r_grid  # T
@@ -589,6 +664,7 @@ def integrate_surfaces(result: Result):
             area_data[attribute] = None
         else:
             area_data[attribute] = np.sum(team_field * dr[np.newaxis, np.newaxis, :] * dA, axis=(1, 2))  # F x PHI x T
+
     for attribute, player_field in [
         ("player_prob", result.player_prob_density),
         ("player_poss", result.player_poss_density),
@@ -600,3 +676,40 @@ def integrate_surfaces(result: Result):
             area_data[attribute] = np.sum(probability_field, axis=(2, 3))  # F x P x PHI x T
 
     return Areas(**area_data)
+
+
+def as_dangerous_result(result, danger, danger_weight=None):
+    """
+    Convert a simulation result to a dangerous simulation result by multiplying density with danger.
+
+    >>> res = simulate_passes_chunked(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
+    >>> res.defense_poss_density
+    array([[[4.04061215e-05, 6.93665348e-05, 2.44880664e-04, 6.66617232e-02,
+             6.66666667e-02, 6.63364931e-02, 4.10293354e-04, 1.45308093e-04,
+             8.82879207e-05, 6.34066099e-05, 4.94660755e-05, 4.05506393e-05,
+             3.43581543e-05]]])
+    >>> danger = np.array([[[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.0, 1.0]]])
+    >>> dangerous_res = as_dangerous_result(res, danger)
+    >>> dangerous_res.defense_poss_density
+    array([[[0.00000000e+00, 6.93665348e-06, 4.89761327e-05, 1.99985170e-02,
+             2.66666667e-02, 3.31682466e-02, 2.46176012e-04, 1.01715665e-04,
+             7.06303366e-05, 5.70659490e-05, 4.94660755e-05, 4.05506393e-05,
+             3.43581543e-05]]])
+    """
+    def weighted_multiplication(x, y, weight=danger_weight):
+        return x**(1/weight) * y**weight if weight is not None else x * y  # TODO use a variant that ensures that the maximum is still 105*68
+
+    return result._replace(
+        attack_cum_poss=None,
+        attack_cum_prob=None,
+        attack_poss_density=weighted_multiplication(danger, result.attack_poss_density) if result.attack_poss_density is not None else None,
+        attack_prob_density=weighted_multiplication(danger, result.attack_prob_density) if result.attack_prob_density is not None else None,
+        defense_cum_poss=None,
+        defense_cum_prob=None,
+        defense_poss_density=weighted_multiplication(danger, result.defense_poss_density) if result.defense_poss_density is not None else None,
+        defense_prob_density=weighted_multiplication(danger, result.defense_prob_density) if result.defense_prob_density is not None else None,
+        player_cum_prob=None,
+        player_cum_poss=None,
+        player_poss_density=weighted_multiplication(danger[:, np.newaxis, :, :], result.player_poss_density) if result.player_poss_density is not None else None,
+        player_prob_density=weighted_multiplication(danger[:, np.newaxis, :, :], result.player_prob_density) if result.player_prob_density is not None else None,
+    )
