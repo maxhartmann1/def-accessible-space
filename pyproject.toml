@@ -28,30 +28,30 @@ classifiers = [
 
 
 [project.optional-dependencies]
-#full = [
-#    "scikit-learn",
-#    "kloppy>=3.15.0",
-#    "xmltodict",
-#    "joblib",
-#    "streamlit",
-#    "wfork-streamlit-profiler",
-#]
+full = [
+    "scikit-learn",
+    "kloppy>=3.15.0",
+    "xmltodict",
+    "joblib",
+    "streamlit",
+    "wfork-streamlit-profiler",
+]
 
-#dev = [
-#    "scikit-learn",
-#    "kloppy>=3.15.0",
-#    "xmltodict",
-#    "joblib",
-#    "streamlit",
-#    "wfork-streamlit-profiler",
-#
-#    "pytest",
-#    "pytest-cov",
-#    "build",
-#    "twine",
-#    "setuptools",
-#    "tox",
-#]
+dev = [
+    "scikit-learn",
+    "kloppy>=3.15.0",
+    "xmltodict",
+    "joblib",
+    "streamlit",
+    "wfork-streamlit-profiler",
+
+    "pytest",
+    "pytest-cov",
+    "build",
+    "twine",
+    "setuptools",
+    "tox",
+]
 
 
 [project.urls]

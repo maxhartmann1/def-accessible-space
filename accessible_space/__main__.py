@@ -1,5 +1,4 @@
 import sys
-import pytest
 
 
 def main():
@@ -8,6 +7,7 @@ def main():
             import accessible_space.apps.validation
             accessible_space.apps.validation.main()
         elif sys.argv[1] == "test":
+            import pytest
             # subprocess.run([
             #     "pytest",
             #     os.path.abspath(os.path.dirname(__file__)),
@@ -23,9 +23,9 @@ def main():
             import accessible_space.apps.readme
             accessible_space.apps.readme.main()
         else:
-            raise ValueError(f"Invalid argument: {sys.argv[1]}. Available arguments: 'validation', 'test'")
+            raise ValueError(f"Invalid argument: {sys.argv[1]}. Available arguments: 'validation', 'test', 'demo'.")
     else:
-        raise ValueError("No arguments provided. Available arguments: 'validation', 'test'")
+        raise ValueError("No arguments provided. Available arguments: 'validation', 'test', 'demo'.")
 
 
 if __name__ == '__main__':

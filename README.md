@@ -47,7 +47,7 @@ For even more advanced analytics, you can also access the raw simulation results
 ```python
 ### Example 4. Access raw simulation results
 # Example 4.1: Expected interception rate = last value of the cumulative interception probability of the defending team
-pass_result = accessible_space.get_expected_pass_completion(df_passes, df_tracking)
+pass_result = accessible_space.get_expected_pass_completion(df_passes, df_tracking, additional_fields_to_return=["defense_cum_prob"])
 pass_frame = 0  # We consider the pass at frame 0
 df_passes["frame_index"] = pass_result.event_frame_index  # frame_index implements a mapping from original frame number to indexes of the numpy arrays in the raw simulation_result.
 df_pass = df_passes[df_passes["frame_id"] == pass_frame]  # Consider the pass at frame 0
@@ -81,6 +81,7 @@ plt.show()
 
 # Example 4.3: Get (dangerous) accessible space of individual players
 df_tracking["player_index"] = pitch_result.player_index  # Mapping from player to index in simulation_result
+pitch_result = accessible_space.get_dangerous_accessible_space(df_tracking, additional_fields_to_return=["player_poss_density"])
 areas = accessible_space.integrate_surfaces(pitch_result.simulation_result)  # Calculate surface integrals
 dangerous_areas = accessible_space.integrate_surfaces(pitch_result.dangerous_result)
 for _, row in df_tracking[(df_tracking["frame_id"] == 0) & (df_tracking["player_id"] != "ball")].iterrows():  # Consider frame 0
