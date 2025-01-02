@@ -1,10 +1,12 @@
 # Accessible space
 
-This package implements the Dangerous Accessible Space (DAS) model for football analytics. It includes a physical pass simulation that can be run for all locations on the pitch to obtain the area that a team can access by a pass.
+![PyPI Version](https://img.shields.io/pypi/v/accessible-space)
+![License](https://img.shields.io/github/license/jonas-bischofberger/accessible-space)
+![Python Versions](https://img.shields.io/badge/Python-%3E=3.7-blue)
 
-Compatible with Python >= 3.7.
+This package delivers a provider-agnostic, easy-to-use and production-ready implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics. By physically simulating passes across the pitch, DAS quantifies dangerous areas that a team can access by a pass, enabling rich insights into passing, off-ball attacking and defending behaviour and spatial dynamics.
 
-### Install package
+### Install package 
 
 ```bash
 pip install accessible-space
@@ -12,12 +14,12 @@ pip install accessible-space
 
 ### Usage examples
 
-The package has a simple pandas interface that you can use to add...
+``accessible-space`` exposes a simple pandas interface that you can use to add the following metrics to tracking and event data from any provider.
 - xC (Expected completion): The expected probability that a pass is completed. Measures the risk of a pass.
-- DAS (Dangerous accessible space) and AS (Accessible space): The (dangerous) area on the pitch that a team controls. DAS represents the value of a situation based on the amount of dangerous space that is accessible to the attacking team.
-- DAS Gained: The increase in DAS through a pass. Measures the reward of a pass.
+- DAS (Dangerous accessible space) and AS (Accessible space): The (dangerous) area on the pitch that a team controls. DAS represents the value or danger of a situation based on the amount of dangerous space that is accessible to the attacking team.
+- DAS Gained: The increase in DAS through a pass. Measures the reward and strategic impact of a pass by evaluating whether the pass opens up new dangerous passing opportunities or not.
 
-To obtain these values, you only need to pass your dataframes and the schema of your data.
+To obtain these metrics, you only need to pass your dataframes and the schema of your data as follows:
 
 ```python
 import accessible_space
@@ -42,7 +44,7 @@ df_tracking["DAS"] = pitch_result.das  # Dangerous accessible space
 print(df_tracking[["frame_id", "team_in_possession", "AS", "DAS"]].drop_duplicates())
 ```
 
-For even more advanced analytics, you can also access the raw simulation results on both team- and player-level.
+For even more advanced analytics, you can also access the raw simulation results on both the team- and player-level.
 
 ```python
 ### Example 4. Access raw simulation results
@@ -98,7 +100,7 @@ for _, row in df_tracking[(df_tracking["frame_id"] == 0) & (df_tracking["player_
     print(f"Player {row['player_id']} ({'attacker' if is_attacker else 'defender'}) controls {acc_space:.0f}m² AS and {das:.2f} m² DAS.")
 ```
 
-For a quick and visual impression of the model, you can also run these examples within a Streamlit app using:
+The above examples can be visualized in a Streamlit dashboard using:
 
 ```bash
 pip install accessible_space[full]  # additional dependencies for dashboards, such as Streamlit
@@ -107,7 +109,7 @@ python -m accessible_space demo
 
 ### Reproduce my validation
 
-My validation can be reproduced with this command which will open up a Streamlit dashboard. Feel free to experiment and play around with the parameters of the validation routine to get an impression of the predictive accuracy of the model.
+My validation can be reproduced with this command, which opens up a Streamlit dashboard. Feel free to explore the dashboard and code to understand the model and its predictive performance.
 
 ```bash
 pip install accessible_space[full]
@@ -127,4 +129,11 @@ python -m accessible_space tests
 
 - Offside players should have an interception rate of 0 - this functionality is not implemented yet.
 - This model doesn't simulate high passes, which is a significant limitation. If you have an idea how to add it, feel free to do so!
-- Probabilities and possibilities are not fully normalized yet, i.e. probabilities generally do not sum to 1, possibilities may exceed 1, etc. This is because of numerical errors. Normalizing the prob-/possibilities is a difficult problem because it has to be done w.r.t two different axes (along the ball trajectory and across players) while maintaining temporal dependencies. Due to the difficulty, it is currently only partially implemented for the possibility density and cumulative possibility.
+- Probabilities and possibilities are not fully normalized yet, i.e. probabilities generally do not sum to 1, possibilities may exceed 1, etc. This is because of numerical errors. Normalizing the prob-/possibilities is a non-trivial problem because it has to be done w.r.t two different axes (along the ball trajectory and across players) while maintaining temporal dependencies. Due to the difficulty, it is currently only partially implemented.
+
+
+### Contact
+
+Feel free to reach out!
+
+E-Mail: <a href="mailto:jonas.bischofberger@univie.ac.at">jonas.bischofberger[at]univie.ac.at</a>

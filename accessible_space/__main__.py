@@ -8,11 +8,6 @@ def main():
             accessible_space.apps.validation.main()
         elif sys.argv[1] == "test":
             import pytest
-            # subprocess.run([
-            #     "pytest",
-            #     os.path.abspath(os.path.dirname(__file__)),
-            #     "--doctest-modules",
-            # ])
             pytest.main([
                 # os.path.abspath(os.path.dirname(__file__)),
                 # "--filterwarnings=ignore:Inferring attacking direction:UserWarning",

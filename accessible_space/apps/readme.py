@@ -1,11 +1,12 @@
-import sys
 import os
 import subprocess
+import sys
+
+import matplotlib.pyplot as plt
+import streamlit as st
 
 import accessible_space
-import streamlit as st
 from accessible_space.tests.resources import df_passes, df_tracking  # Example data
-import matplotlib.pyplot as plt
 
 
 def readme_dashboard():

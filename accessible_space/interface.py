@@ -16,16 +16,6 @@ from .core import _DEFAULT_PASS_START_LOCATION_OFFSET, _DEFAULT_B0, _DEFAULT_TIM
 from .utility import get_unused_column_name, _dist_to_opp_goal, _opening_angle_to_goal, _adjust_saturation, _unset, \
     _replace_column_values_except_nans
 
-ReturnValueDASGained = collections.namedtuple("ReturnValueDASGained", [
-    "acc_space", "das", "acc_space_reception", "das_reception", "as_gained", "das_gained", "simulation_result",
-    "frame_index", "target_frame_index"
-])
-ReturnValueXC = collections.namedtuple("ReturnValueXC", [
-    "xc", "event_frame_index", "tracking_frame_index", "tracking_player_index", "simulation_result"
-])
-ReturnValueDAS = collections.namedtuple("ReturnValueDAS", [
-    "acc_space", "das", "frame_index", "player_index", "simulation_result", "dangerous_result"
-])
 
 _DEFAULT_N_FRAMES_AFTER_PASS_FOR_V0 = 5
 _DEFAULT_FALLBACK_V0 = 10
@@ -45,7 +35,7 @@ _DEFAULT_KEEP_INERTIAL_VELOCITY_FOR_DAS = True
 _DEFAULT_A_MAX_FOR_DAS = 14.256003027575932
 _DEFAULT_V_MAX_FOR_DAS = 12.865546440947865
 _DEFAULT_USE_MAX_FOR_DAS = False
-_DEFAULT_USE_APPROX_TWO_POINT_FOR_DAS = True  # True
+_DEFAULT_USE_APPROX_TWO_POINT_FOR_DAS = True
 _DEFAULT_INERTIAL_SECONDS_FOR_DAS = 0.6164609802178712
 _DEFAULT_RADIAL_GRIDSIZE_FOR_DAS = 3
 _DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS = "max"
@@ -57,6 +47,17 @@ _DEFAULT_PHI_OFFSET = 0
 _DEFAULT_N_V0_FOR_DAS = 30
 _DEFAULT_V0_MIN_FOR_DAS = 3
 _DEFAULT_V0_MAX_FOR_DAS = 30
+
+ReturnValueDASGained = collections.namedtuple("ReturnValueDASGained", [
+    "acc_space", "das", "acc_space_reception", "das_reception", "as_gained", "das_gained", "simulation_result",
+    "frame_index", "target_frame_index"
+])
+ReturnValueXC = collections.namedtuple("ReturnValueXC", [
+    "xc", "event_frame_index", "tracking_frame_index", "tracking_player_index", "simulation_result"
+])
+ReturnValueDAS = collections.namedtuple("ReturnValueDAS", [
+    "acc_space", "das", "frame_index", "player_index", "simulation_result", "dangerous_result"
+])
 
 
 def _check_presence_of_required_columns(df, str_data, column_names, column_values, additional_message=None):
@@ -93,10 +94,6 @@ def _check_ball_in_tracking_data(df_tracking, tracking_player_col, ball_tracking
         raise ValueError(f"Ball flag ball_tracking_player_id='{ball_tracking_player_id}' does not exist in column df_tracking['{tracking_player_col}']. Make sure to pass the correct identifier of the ball with the parameter 'ball_tracking_player_id'")
 
 
-def _get_unique_frame_col(df_passes):
-    return np.arange(df_passes.shape[0])
-
-
 def _get_matrix_coordinates(
     df_tracking, frame_col="frame_id", player_col="player_id", ball_player_id="ball", team_col="team_id",
     controlling_team_col="team_in_possession", x_col="x", y_col="y", vx_col="vx", vy_col="vy"
@@ -114,7 +111,7 @@ def _get_matrix_coordinates(
     4         5      ball    None                  H  5.0   9.0  13.0  17.0
     5         6      ball    None                  H  6.0  10.0  14.0  18.0
     >>> PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = _get_matrix_coordinates(df_tracking)
-    >>> PLAYER_POS, PLAYER_POS.shape
+    >>> PLAYER_POS, PLAYER_POS.shape  # F x P x C
     (array([[[ 1.,  5.,  9., 13.],
             [ 2.,  6., 10., 14.]],
     <BLANKLINE>
@@ -143,7 +140,6 @@ def _get_matrix_coordinates(
 
     duplicate_index = df_tracking.loc[i_player].set_index([frame_col, player_col]).index.duplicated(keep=False)
     if duplicate_index.sum() > 0:
-        warnings.warn("Tracking data contains duplicate frame-player combinations. Removing duplicate frames.")
         df_tracking = df_tracking.drop_duplicates(subset=[frame_col, player_col], keep="first")
         assert not df_tracking.loc[i_player].set_index([frame_col, player_col]).index.duplicated().any()
     if df_tracking.loc[i_player].set_index([frame_col, player_col]).isnull().any().any():
@@ -153,7 +149,7 @@ def _get_matrix_coordinates(
 
     # check if index duplicate
     if df_tracking.loc[i_player].set_index([frame_col, player_col]).index.duplicated().any():
-        raise ValueError(f"Tracking data contains duplicate index values. Make sure that the DataFrame is sorted by frame_col='{frame_col}' and player_col='{player_col}'.")
+        raise ValueError(f"Tracking data contains duplicate pairs frame_col='{frame_col}' and player_col='{player_col}'.")
 
     df_players = df_tracking.loc[i_player].pivot(
         index=frame_col, columns=player_col, values=[x_col, y_col, vx_col, vy_col]
@@ -355,9 +351,9 @@ def get_das_gained(
     >>> df_passes["AS_Gained"], df_passes["DAS_Gained"], df_passes["fr_index"], simulation_result = result.as_gained, result.das_gained, result.frame_index, result.simulation_result
     >>> df_passes
        frame_id  target_frame_id player_id receiver_id team_id     x     y  x_target  y_target  pass_outcome receiver_team_id         event_string    AS_Gained  DAS_Gained  fr_index
-    0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)   175.380979  121.351753         0
+    0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)   203.407565  117.591519         0
     1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0) -3172.257169 -155.589097         1
-    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -3394.517672 -125.358147         3
+    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -3394.517672 -125.358147         2
     """
     _check_presence_of_required_columns(df_passes, "df_passes", ["event_success_col", "event_frame_col", "event_target_frame_col"], [event_success_col, event_frame_col, event_target_frame_col])
     _check_presence_of_required_columns(df_tracking, "df_tracking", ["tracking_frame_col", "tracking_x_col", "tracking_y_col", "tracking_player_col", "tracking_team_col"], [tracking_frame_col, tracking_x_col, tracking_y_col, tracking_player_col, tracking_team_col])
@@ -365,27 +361,29 @@ def get_das_gained(
     _check_pitch_dimensions(x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max)
     _check_ball_in_tracking_data(df_tracking, tracking_player_col, ball_tracking_player_id)
 
-    # check for duplicate frames in pass data
-    if df_passes[event_frame_col].duplicated().any():
-        warnings.warn("Duplicate frames in pass data. This might currently lead to unexpected results for DAS Gained.")
-
     df_passes = df_passes.copy()
     df_passes[event_success_col] = df_passes[event_success_col].astype(int)
 
     unique_frame_col = get_unused_column_name(df_passes.columns.tolist() + df_tracking.columns.tolist(), "unique_frame")
-    df_passes[unique_frame_col] = _get_unique_frame_col(df_passes)
+    df_passes[unique_frame_col] = np.arange(df_passes.shape[0])
+    unique_frame_reception_col = get_unused_column_name(df_passes.columns.tolist() + df_tracking.columns.tolist(), "unique_frame_reception")
+    df_passes[unique_frame_reception_col] = df_passes[unique_frame_col].max() + 1 + np.arange(df_passes.shape[0])
 
-    relevant_frames = set(df_passes[event_frame_col].tolist() + df_passes[event_target_frame_col].tolist())
-    df_tracking_passes_and_receptions = df_tracking[df_tracking[tracking_frame_col].isin(relevant_frames)].copy()
+    df_tracking_plays = df_passes[[event_frame_col, unique_frame_col]].merge(df_tracking, left_on=event_frame_col, right_on=tracking_frame_col, how="right").dropna(subset=[unique_frame_col])
+    df_tracking_receptions = df_passes[[event_target_frame_col, unique_frame_reception_col]].merge(df_tracking, left_on=event_target_frame_col, right_on=tracking_frame_col, how="right").dropna(subset=[unique_frame_reception_col])
+    df_tracking_receptions[unique_frame_col] = df_tracking_receptions[unique_frame_reception_col]
+    df_tracking = pd.concat([df_tracking_plays, df_tracking_receptions], axis=0).reset_index(drop=True)
+
+    df_tracking_passes_and_receptions = df_tracking.drop(columns=[event_target_frame_col, unique_frame_reception_col])
 
     if use_event_coordinates_as_ball_position:
         _check_presence_of_required_columns(df_passes, "df_passes", ["event_start_x_col", "event_start_y_col", "event_target_x_col", "event_target_y_col"], [event_start_x_col, event_start_y_col, event_target_x_col, event_target_y_col], additional_message="Either specify these columns or set 'use_event_coordinates_as_ball_position' to 'False'")
 
         i_ball = df_tracking_passes_and_receptions[tracking_player_col] == ball_tracking_player_id
-        df_tracking_passes_and_receptions.loc[i_ball, :] = _replace_column_values_except_nans(df_tracking_passes_and_receptions.loc[i_ball, :], tracking_frame_col, tracking_x_col, df_passes, event_target_frame_col, event_target_x_col)
-        df_tracking_passes_and_receptions.loc[i_ball, :] = _replace_column_values_except_nans(df_tracking_passes_and_receptions.loc[i_ball, :], tracking_frame_col, tracking_y_col, df_passes, event_target_frame_col, event_target_y_col)
-        df_tracking_passes_and_receptions.loc[i_ball, :] = _replace_column_values_except_nans(df_tracking_passes_and_receptions.loc[i_ball, :], tracking_frame_col, tracking_x_col, df_passes, event_frame_col, event_start_x_col)
-        df_tracking_passes_and_receptions.loc[i_ball, :] = _replace_column_values_except_nans(df_tracking_passes_and_receptions.loc[i_ball, :], tracking_frame_col, tracking_y_col, df_passes, event_frame_col, event_start_y_col)
+        df_tracking_passes_and_receptions.loc[i_ball, :] = _replace_column_values_except_nans(df_tracking_passes_and_receptions.loc[i_ball, :], unique_frame_col, tracking_x_col, df_passes, unique_frame_reception_col, event_target_x_col)
+        df_tracking_passes_and_receptions.loc[i_ball, :] = _replace_column_values_except_nans(df_tracking_passes_and_receptions.loc[i_ball, :], unique_frame_col, tracking_y_col, df_passes, unique_frame_reception_col, event_target_y_col)
+        df_tracking_passes_and_receptions.loc[i_ball, :] = _replace_column_values_except_nans(df_tracking_passes_and_receptions.loc[i_ball, :], unique_frame_col, tracking_x_col, df_passes, unique_frame_col, event_start_x_col)
+        df_tracking_passes_and_receptions.loc[i_ball, :] = _replace_column_values_except_nans(df_tracking_passes_and_receptions.loc[i_ball, :], unique_frame_col, tracking_y_col, df_passes, unique_frame_col, event_start_y_col)
 
     if use_event_team_as_team_in_possession:
         _check_presence_of_required_columns(df_passes, "df_passes", ["event_team_col", "event_receiver_team_col"], [event_team_col, event_receiver_team_col], additional_message="Either specify these columns or set 'use_event_team_as_team_in_possession' to 'False' and specify 'tracking_team_in_possession_col'.")
@@ -393,12 +391,12 @@ def get_das_gained(
             warnings.warn(f"Success column '{event_success_col}' is not consistent with team columns '{event_team_col}' == '{event_receiver_team_col}'.")
 
         df_tracking_passes_and_receptions[tracking_team_in_possession_col] = None
-        df_tracking_passes_and_receptions = _replace_column_values_except_nans(df_tracking_passes_and_receptions, tracking_frame_col, tracking_team_in_possession_col, df_passes, event_frame_col, event_team_col)
-        df_tracking_passes_and_receptions = _replace_column_values_except_nans(df_tracking_passes_and_receptions, tracking_frame_col, tracking_team_in_possession_col, df_passes, event_target_frame_col, event_receiver_team_col)
+        df_tracking_passes_and_receptions = _replace_column_values_except_nans(df_tracking_passes_and_receptions, unique_frame_col, tracking_team_in_possession_col, df_passes, unique_frame_col, event_team_col)
+        df_tracking_passes_and_receptions = _replace_column_values_except_nans(df_tracking_passes_and_receptions, unique_frame_col, tracking_team_in_possession_col, df_passes, unique_frame_reception_col, event_receiver_team_col)
 
     ret = get_dangerous_accessible_space(
         df_tracking_passes_and_receptions,
-        frame_col=tracking_frame_col, player_col=tracking_player_col, team_col=tracking_team_col,
+        frame_col=unique_frame_col, player_col=tracking_player_col, team_col=tracking_team_col,
         x_col=tracking_x_col, y_col=tracking_y_col, vx_col=tracking_vx_col, vy_col=tracking_vy_col,
         team_in_possession_col=tracking_team_in_possession_col, ball_player_id=ball_tracking_player_id,
         attacking_direction_col=tracking_attacking_direction_col, period_col=tracking_period_col,
@@ -442,16 +440,20 @@ def get_das_gained(
     df_tracking_passes_and_receptions["AS"] = ret.acc_space
     df_tracking_passes_and_receptions["frame_index"] = ret.frame_index
 
-    fr2das = df_tracking_passes_and_receptions[[tracking_frame_col, "DAS"]].set_index(tracking_frame_col)["DAS"].to_dict()
-    fr2as = df_tracking_passes_and_receptions[[tracking_frame_col, "AS"]].set_index(tracking_frame_col)["AS"].to_dict()
-    fr2index = df_tracking_passes_and_receptions[[tracking_frame_col, "frame_index"]].set_index(tracking_frame_col)["frame_index"].to_dict()
+    df_tracking_passes_and_receptions = df_tracking_passes_and_receptions.dropna(subset=[unique_frame_col, "DAS", "AS", "frame_index"])
+    df_tracking_passes_and_receptions[unique_frame_col] = df_tracking_passes_and_receptions[unique_frame_col].astype(int)
+    df_tracking_passes_and_receptions["frame_index"] = df_tracking_passes_and_receptions["frame_index"].astype(int)
 
-    das = df_passes[event_frame_col].map(fr2das)
-    acc_space = df_passes[event_frame_col].map(fr2as)
-    frame_index = df_passes[event_frame_col].map(fr2index)
-    target_frame_index = df_passes[event_target_frame_col].map(fr2index)
-    das_reception = df_passes[event_target_frame_col].map(fr2das)
-    acc_space_reception = df_passes[event_target_frame_col].map(fr2as)
+    fr2das = df_tracking_passes_and_receptions[[unique_frame_col, "DAS"]].dropna().set_index(unique_frame_col)["DAS"].to_dict()
+    fr2as = df_tracking_passes_and_receptions[[unique_frame_col, "AS"]].set_index(unique_frame_col)["AS"].to_dict()
+    fr2index = df_tracking_passes_and_receptions[[unique_frame_col, "frame_index"]].set_index(unique_frame_col)["frame_index"].to_dict()
+
+    das = df_passes[unique_frame_col].apply(lambda fr: fr2das[fr])
+    acc_space = df_passes[unique_frame_col].map(fr2as)
+    frame_index = df_passes[unique_frame_col].map(fr2index)
+    target_frame_index = df_passes[unique_frame_reception_col].map(fr2index)
+    das_reception = df_passes[unique_frame_reception_col].map(fr2das)
+    acc_space_reception = df_passes[unique_frame_reception_col].map(fr2as)
 
     # Unsuccessful passes = All (D)AS is lost.
     i_unsuccessful = df_passes[event_success_col] == 0
@@ -575,7 +577,7 @@ def get_expected_pass_completion(
     df_passes = df_passes.copy()
 
     unique_frame_col = get_unused_column_name(df_passes.columns.tolist() + df_tracking.columns.tolist(), "unique_frame")
-    df_passes[unique_frame_col] = _get_unique_frame_col(df_passes)
+    df_passes[unique_frame_col] = np.arange(df_passes.shape[0])
 
     unique_event_start_x_col = get_unused_column_name(df_passes.columns.tolist() + df_tracking.columns.tolist(), "unique_event_start_x")  # avoid naming conflicts ("x" is often present in both tracking and event data)
     unique_event_start_y_col = get_unused_column_name(df_passes.columns.tolist() + df_tracking.columns.tolist(), "unique_event_start_y")
@@ -680,11 +682,6 @@ def get_expected_pass_completion(
     if np.any(np.isnan(xc)):
         warnings.warn("Some xC values are NaN.")
 
-    # if use_poss:
-    #     xc = cropped_result.attack_cum_poss[:, 0, -1]  # F x PHI x T ---> F
-    # else:
-    #     xc = cropped_result.attack_cum_prob[:, 0, -1]  # F x PHI x T ---> F
-
     frame_to_unique_frame = df_passes[[event_frame_col, unique_frame_col]].drop_duplicates(event_frame_col, keep="first").set_index(event_frame_col)[unique_frame_col].to_dict()
     event_frame_index = df_passes[unique_frame_col].map(unique_frame_to_index)
     tracking_frame_index = df_tracking[tracking_frame_col].map(frame_to_unique_frame)
@@ -788,16 +785,6 @@ def get_dangerous_accessible_space(
 
     df_tracking = df_tracking.copy()
 
-    # Center coordinates
-    # x_center = (x_pitch_max + x_pitch_min) / 2
-    # y_center = (y_pitch_max + y_pitch_min) / 2
-    # df_tracking[x_col] = df_tracking[x_col] - x_center
-    # df_tracking[y_col] = df_tracking[y_col] - y_center
-    # x_pitch_max_centered = x_pitch_max - x_center
-    # x_pitch_min_centered = x_pitch_min - x_center
-    # y_pitch_max_centered = y_pitch_max - y_center
-    # y_pitch_min_centered = y_pitch_min - y_center
-
     PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = _get_matrix_coordinates(
         df_tracking, frame_col=frame_col, player_col=player_col,
         ball_player_id=ball_player_id, team_col=team_col, x_col=x_col, y_col=y_col,
@@ -877,8 +864,8 @@ def get_dangerous_accessible_space(
     # Get AS and DAS
     accessible_space = integrate_surfaces(simulation_result, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max).attack_poss  # F
     das = integrate_surfaces(dangerous_result, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max).attack_poss  # F
-    fr2AS = pd.Series(accessible_space, index=df_tracking[frame_col].unique())
-    fr2DAS = pd.Series(das, index=df_tracking[frame_col].unique())
+    fr2AS = pd.Series(accessible_space, index=frame_to_index.keys())
+    fr2DAS = pd.Series(das, index=frame_to_index.keys())
     as_series = df_tracking[frame_col].map(fr2AS)
     das_series = df_tracking[frame_col].map(fr2DAS)
 
@@ -939,12 +926,6 @@ def infer_playing_direction(
 
 def plot_expected_completion_surface(simulation_result: SimulationResult, frame_index=0, attribute="attack_poss_density", player_index=None, color="blue", plot_gridpoints=True):  # TODO gridpoints False
     """ Plot a pass completion surface. """
-    # if not isinstance(simulation_result, SimulationResult):
-    #     if isinstance(simulation_result, ReturnValueDAS) or isinstance(simulation_result, ReturnValueDASGained) or isinstance(simulation_result, ReturnValueXC):
-    #         raise ValueError(f"Parameter 'simulation_result' is not of type 'SimulationResult' but of type '{type(simulation_result).__name__}': Did you mean to pass <{type(simulation_result).__name__}>.simulation_result?")
-    #     else:
-    #         raise ValueError(f"Parameter 'simulation_result' is not of type 'SimulationResult' but of type '{type(simulation_result).__name__}'")
-
     x_grid = simulation_result.x_grid[int(frame_index), :, :]
     y_grid = simulation_result.y_grid[int(frame_index), :, :]
 
