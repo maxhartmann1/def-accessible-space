@@ -84,7 +84,7 @@ plt.show()
 
 # Example 4.3: Get (dangerous) accessible space of individual players
 df_tracking["player_index"] = pitch_result.player_index  # Mapping from player to index in simulation_result
-pitch_result = accessible_space.get_dangerous_accessible_space(df_tracking, additional_fields_to_return=["player_poss_density"])
+pitch_result = accessible_space.get_dangerous_accessible_space(df_tracking, additional_fields_to_return=["player_poss_density"], period_col=None)
 areas = accessible_space.integrate_surfaces(pitch_result.simulation_result)  # Calculate surface integrals
 dangerous_areas = accessible_space.integrate_surfaces(pitch_result.dangerous_result)
 for _, row in df_tracking[(df_tracking["frame_id"] == 0) & (df_tracking["player_id"] != "ball")].iterrows():  # Consider frame 0
@@ -93,8 +93,8 @@ for _, row in df_tracking[(df_tracking["frame_id"] == 0) & (df_tracking["player_
     das = dangerous_areas.player_poss[int(frame_index), int(row["player_index"])]
 
     plot_constellation(df_tracking_frame)
-    accessible_space.plot_expected_completion_surface(pitch_result.simulation_result, "player_poss_density", frame_index=frame_index, player_index=int(row["player_index"]))
-    accessible_space.plot_expected_completion_surface(pitch_result.dangerous_result, "player_poss_density", frame_index=frame_index, player_index=int(row["player_index"]), color="red")
+    accessible_space.plot_expected_completion_surface(pitch_result.simulation_result, frame_index=frame_index, attribute="player_poss_density", player_index=int(row["player_index"]))
+    accessible_space.plot_expected_completion_surface(pitch_result.dangerous_result, frame_index=frame_index, attribute="player_poss_density", player_index=int(row["player_index"]), color="red")
     plt.title(f"{row['player_id']} ({'attacker' if is_attacker else 'defender'}) {acc_space:.0f}m² AS and {das:.2f} m² DAS.")
     plt.show()
     # Note: Individual space is not exclusive within a team. This is intentional because your team mates do not take away space from you in the competitive way that your opponents do.

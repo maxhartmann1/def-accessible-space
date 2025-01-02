@@ -11,6 +11,7 @@ def main():
             import pytest
             pytest.main([
                 os.path.abspath(os.path.dirname(__file__)),
+                "--doctest-modules",
                 # "--filterwarnings=ignore:Inferring attacking direction:UserWarning",
                 # "--filterwarnings=ignore:Range of tracking Y coordinates:UserWarning",
                 # "--filterwarnings=ignore:Range of tracking X coordinates:UserWarning",
