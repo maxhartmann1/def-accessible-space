@@ -1,5 +1,6 @@
 import collections
 import gc
+
 import numpy as np
 import scipy.integrate
 
@@ -52,11 +53,10 @@ _DEFAULT_V0_PROB_AGGREGATION_MODE = "mean"
 _DEFAULT_NORMALIZE = False
 _DEFAULT_USE_EFFICIENT_SIGMOID = True
 
-PARAMETER_BOUNDS = {  # TODO run again with new bounds
+PARAMETER_BOUNDS = {
     # Core simulation model
     "pass_start_location_offset": [-3, 3],
     "time_offset_ball": [-3, 3],  # very small and negative values can lead to artifacts around the passer (bc passer cannot reach the ball), also in conjunction with location offset
-    # "radial_gridsize": [4.99, 5.01],
     "radial_gridsize": [3, 7],
     "b0": [-40, 40],
     "b1": [-500, 0],
@@ -534,31 +534,6 @@ def clip_simulation_result_to_pitch(
             if cumulative_field == "attack_cum_prob":
                 if i > 0:
                     assert np.all(on_pitch_mask_field[..., i] | (updated_cum[..., i] == updated_cum[..., i-1]))
-        # for i in range(cum_field_data.shape[-1]):
-        #     if i > 0:
-        #         assert np.all(on_pitch_mask_field[..., i] | (updated_cum[..., i] == updated_cum[..., i - 1]))
-
-        # updated_cum = np.where(~on_pitch_mask_field, updated_cum, np.nan)
-        # st.write("x", x.shape)
-        # st.write(x[0, ...])
-        # st.write("y", y.shape)
-        # st.write(y[0, ...])
-        # st.write("updated_cum", updated_cum.shape)
-        # st.write(updated_cum[0, 0, ...])
-        # assert ~np.isnan(updated_cum).any()
-        # st.write("np.unique(updated_cum[0, 0, ...])")
-        # st.write(np.unique(updated_cum[0, 0, ...]))
-        # assert len(np.unique(updated_cum[0, 0, ...])) == 2
-        #
-        def array_to_list_of_1d_slices(array):
-            # Reshape to a 2D array, where each row corresponds to the last dimension
-            reshaped_array = array.reshape(-1, array.shape[-1])
-            list_of_arrays = [row for row in reshaped_array]
-            return list_of_arrays
-
-        for time_slice in array_to_list_of_1d_slices(updated_cum):
-            x = np.unique(time_slice[~np.isnan(time_slice)])
-            # assert len(x) == 1
 
         simulation_result = simulation_result._replace(**{cumulative_field: updated_cum})
 
@@ -571,14 +546,6 @@ def clip_simulation_result_to_pitch(
         p0_density=np.where(on_pitch_mask, simulation_result.p0_density, density_replacement_value) if simulation_result.p0_density is not None else None,
         player_prob_density=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_prob_density, density_replacement_value) if simulation_result.player_prob_density is not None else None,
         player_poss_density=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_poss_density, density_replacement_value) if simulation_result.player_poss_density is not None else None,
-
-        # attack_cum_prob=np.where(on_pitch_mask, simulation_result.attack_cum_prob, density_replacement_value) if simulation_result.attack_cum_prob is not None else None,
-        # attack_cum_poss=np.where(on_pitch_mask, simulation_result.attack_cum_poss, density_replacement_value) if simulation_result.attack_cum_poss is not None else None,
-        # defense_cum_prob=np.where(on_pitch_mask, simulation_result.defense_cum_prob, density_replacement_value) if simulation_result.defense_cum_prob is not None else None,
-        # defense_cum_poss=np.where(on_pitch_mask, simulation_result.defense_cum_poss, density_replacement_value) if simulation_result.defense_cum_poss is not None else None,
-        # cum_p0=np.where(on_pitch_mask, simulation_result.cum_p0, density_replacement_value) if simulation_result.cum_p0 is not None else None,
-        # player_cum_prob=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_cum_prob, density_replacement_value) if simulation_result.player_cum_prob is not None else None,
-        # player_cum_poss=np.where(on_pitch_mask[:, np.newaxis, :, :], simulation_result.player_cum_poss, density_replacement_value) if simulation_result.player_cum_poss is not None else None,
     )
     return simulation_result
 

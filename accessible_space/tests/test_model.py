@@ -224,6 +224,8 @@ def test_coordinate_systems(_get_data):
 
 def test_das_gained():
     from .resources import df_passes, df_tracking
+    df_passes = df_passes.copy()
+    df_tracking = df_tracking.copy()
 
     ret_das_gained = accessible_space.get_das_gained(df_passes, df_tracking, use_event_coordinates_as_ball_position=False, use_event_team_as_team_in_possession=False, tracking_period_col=None)
     df_passes["DAS_gained"] = ret_das_gained.das_gained
@@ -263,8 +265,90 @@ def test_das_gained():
             assert p4ss["AS_reception"] == 0
 
 
+def test_das_gained_duplicate_frames():
+    from .resources import df_passes, df_tracking
+    df_passes = df_passes.copy()
+    df_tracking = df_tracking.copy()
+    df_passes2 = df_passes.copy()
+    # df_passes2["y"] = df_passes2["y"]
+    # df_passes2["x"] = df_passes2["x"]
+    # df_passes2["y_target"] = df_passes2["y_target"]
+    # df_passes2["x_target"] = df_passes2["x_target"]
+    df_passes = pd.concat([df_passes, df_passes2], ignore_index=True)
+
+    ret_das_gained = accessible_space.get_das_gained(df_passes, df_tracking, use_event_coordinates_as_ball_position=True, use_event_team_as_team_in_possession=True, tracking_period_col=None)
+    df_passes["DAS_gained"] = ret_das_gained.das_gained
+    df_passes["AS_gained"] = ret_das_gained.as_gained
+    df_passes["AS"] = ret_das_gained.acc_space
+    df_passes["DAS"] = ret_das_gained.das
+    df_passes["AS_reception"] = ret_das_gained.acc_space_reception
+    df_passes["DAS_reception"] = ret_das_gained.das_reception
+    df_passes["frame_index"] = ret_das_gained.frame_index
+    df_passes["target_frame_index"] = ret_das_gained.target_frame_index
+
+    # assert top half = bottom half
+    assert np.allclose(df_passes.iloc[:len(df_passes) // 2]["DAS_gained"], df_passes.iloc[len(df_passes) // 2:]["DAS_gained"], atol=1e-3)
+
+    assert df_passes.apply(lambda row: row["frame_index"] != row["target_frame_index"], axis=1).all()
+
+    i_unsuccessful = df_passes["pass_outcome"] == 0
+    i_successful = df_passes["pass_outcome"] == 1
+
+    assert (df_passes.loc[i_unsuccessful, "DAS_gained"] < 0).all()
+    assert (df_passes.loc[i_unsuccessful, "AS_gained"] < 0).all()
+
+    assert (df_passes.loc[i_successful, "DAS_gained"] == df_passes.loc[i_successful, "DAS_reception"] - df_passes.loc[i_successful, "DAS"]).all()
+
+
+def test_sort_independence():
+    from .resources import df_tracking, df_passes
+    df_tracking = df_tracking.copy()
+    df_passes = df_passes.copy()
+
+    df_tracking = pd.concat([df_tracking, df_tracking], ignore_index=True)
+    df_passes = pd.concat([df_passes, df_passes], ignore_index=True)
+
+    # DAS
+    df_tracking = df_tracking.sort_values("frame_id", ascending=True).reset_index(drop=True)
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None)
+    df_tracking["DAS"] = ret.das
+
+    df_tracking_sorted = df_tracking.sort_values("frame_id", ascending=False).reset_index(drop=True)
+    ret_sorted = accessible_space.get_dangerous_accessible_space(df_tracking_sorted, period_col=None)
+    df_tracking_sorted["DAS"] = ret_sorted.das
+
+    df_tracking_sorted = df_tracking_sorted.sort_values("frame_id", ascending=True).reset_index(drop=True)
+    assert (df_tracking["DAS"] == df_tracking_sorted["DAS"]).all()
+
+    # xC
+    df_passes = df_passes.sort_values("frame_id", ascending=True).reset_index(drop=True)
+    ret = accessible_space.get_expected_pass_completion(df_passes, df_tracking)
+    df_passes["xc"] = ret.xc
+
+    df_passes_sorted = df_passes.sort_values("frame_id", ascending=False).reset_index(drop=True)
+    ret_sorted = accessible_space.get_expected_pass_completion(df_passes_sorted, df_tracking)
+    df_passes_sorted["xc"] = ret_sorted.xc
+
+    df_passes_sorted = df_passes_sorted.sort_values("frame_id", ascending=True).reset_index(drop=True)
+    assert (df_passes["xc"] == df_passes_sorted["xc"]).all()
+
+    # DAS Gained
+    df_passes = df_passes.sort_values("frame_id", ascending=True).reset_index(drop=True)
+    ret = accessible_space.get_das_gained(df_passes, df_tracking, tracking_period_col="period_id")
+    df_passes["DAS Gained"] = ret.das_gained
+
+    df_passes_sorted = df_passes.sort_values("frame_id", ascending=False).reset_index(drop=True)
+    ret_sorted = accessible_space.get_das_gained(df_passes_sorted, df_tracking, tracking_period_col="period_id")
+    df_passes_sorted["DAS Gained"] = ret_sorted.das_gained
+
+    df_passes_sorted = df_passes_sorted.sort_values("frame_id", ascending=True).reset_index(drop=True)
+    assert (df_passes["DAS Gained"] == df_passes_sorted["DAS Gained"]).all()
+
+
 def test_chunk_wise_simulation():
     from .resources import df_tracking, df_passes
+    df_tracking = df_tracking.copy()
+    df_passes = df_passes.copy()
 
     F_tracking = len(df_tracking["frame_id"].unique())
     assert F_tracking > 1
