@@ -1,3 +1,4 @@
+import os
 import sys
 
 
@@ -6,10 +7,10 @@ def main():
         if sys.argv[1] == "validation":
             import accessible_space.apps.validation
             accessible_space.apps.validation.main()
-        elif sys.argv[1] == "test":
+        elif sys.argv[1] == "tests":
             import pytest
             pytest.main([
-                # os.path.abspath(os.path.dirname(__file__)),
+                os.path.abspath(os.path.dirname(__file__)),
                 # "--filterwarnings=ignore:Inferring attacking direction:UserWarning",
                 # "--filterwarnings=ignore:Range of tracking Y coordinates:UserWarning",
                 # "--filterwarnings=ignore:Range of tracking X coordinates:UserWarning",

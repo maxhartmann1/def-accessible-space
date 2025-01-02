@@ -18,6 +18,7 @@ pip install accessible-space
 - xC (Expected completion): The expected probability that a pass is completed. Measures the risk of a pass.
 - DAS (Dangerous accessible space) and AS (Accessible space): The (dangerous) area on the pitch that a team controls. DAS represents the value or danger of a situation based on the amount of dangerous space that is accessible to the attacking team.
 - DAS Gained: The increase in DAS through a pass. Measures the reward and strategic impact of a pass by evaluating whether the pass opens up new dangerous passing opportunities or not.
+- AS Gained: The increase in AS (Accessible space) through a pass. Measures the degree to which the pass opens up safe passing opportunities.
 
 To obtain these metrics, you only need to pass your dataframes and the schema of your data as follows:
 
@@ -116,7 +117,6 @@ pip install accessible_space[full]
 python -m accessible_space validation
 ```
 
-
 ### Run tests
 
 ```bash
@@ -124,13 +124,11 @@ pip install accessible_space[dev]
 python -m accessible_space tests
 ```
 
-
 ### Known issues (feel free to improve upon them)
 
 - Offside players should have an interception rate of 0 - this functionality is not implemented yet.
 - This model doesn't simulate high passes, which is a significant limitation. If you have an idea how to add it, feel free to do so!
 - Probabilities and possibilities are not fully normalized yet, i.e. probabilities generally do not sum to 1, possibilities may exceed 1, etc. This is because of numerical errors. Normalizing the prob-/possibilities is a non-trivial problem because it has to be done w.r.t two different axes (along the ball trajectory and across players) while maintaining temporal dependencies. Due to the difficulty, it is currently only partially implemented.
-
 
 ### Contact
 
