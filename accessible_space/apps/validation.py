@@ -531,8 +531,8 @@ def get_scores(_df, baseline_accuracy, outcome_col="success", add_confidence_int
             data["logloss_ci_lower"] = logloss_ci_lower
             data["logloss_ci_upper"] = logloss_ci_upper
             _, brier_ci_lower, brier_ci_upper = bootstrap_brier_ci(df[outcome_col].values, df["xc"].values)
-            data["brier_ci_lower"] = logloss_ci_lower
-            data["brier_ci_upper"] = logloss_ci_upper
+            data["brier_ci_lower"] = brier_ci_lower
+            data["brier_ci_upper"] = brier_ci_upper
             _, auc_ci_lower, auc_ci_upper = bootstrap_auc_ci(df[outcome_col].values, df["xc"].values)
             data["auc_ci_lower"] = auc_ci_lower
             data["auc_ci_upper"] = auc_ci_upper
@@ -578,8 +578,8 @@ def get_scores(_df, baseline_accuracy, outcome_col="success", add_confidence_int
                 data[f"logloss_ci_lower_{synth_str}"] = logloss_ci_lower
                 data[f"logloss_ci_upper_{synth_str}"] = logloss_ci_upper
                 _, brier_ci_lower, brier_ci_upper = bootstrap_brier_ci(df_synth[outcome_col].values, df_synth["xc"].values)
-                data[f"brier_ci_lower_{synth_str}"] = logloss_ci_lower
-                data[f"brier_ci_upper_{synth_str}"] = logloss_ci_upper
+                data[f"brier_ci_lower_{synth_str}"] = brier_ci_lower
+                data[f"brier_ci_upper_{synth_str}"] = brier_ci_upper
                 _, auc_ci_lower, auc_ci_upper = bootstrap_auc_ci(df_synth[outcome_col].values, df_synth["xc"].values)
                 data[f"auc_ci_lower_{synth_str}"] = auc_ci_lower
                 data[f"auc_ci_upper_{synth_str}"] = auc_ci_upper
@@ -984,12 +984,16 @@ def validate_multiple_matches(
 
     use_parallel_processing = st.checkbox("Use parallel processing", value=False)
 
+    optimization_target = st.selectbox("Select optimization target", [
+        "logloss", "brier_score", "auc", "logloss_real", "brier_score_real", "auc_real", "logloss_synthetic", "brier_score_synthetic", "auc_synthetic",
+    ])
+
     if not use_prefit:
         if use_parallel_processing:
             with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
                 tasks = [executor.submit(simulate_params_partial, seed=np.random.randint(0, 2**16 - 1)) for _ in range(n_steps)]
 
-                for i, future in enumerate(progress_bar(concurrent.futures.as_completed(tasks), total=n_steps)):
+                for i, future in enumerate(progress_bar(concurrent.futures.as_completed(tasks), total=n_steps, desc="MP Simulation")):
                     # process = psutil.Process(os.getpid())
                     # process_id = os.getpid()
                     # print(f"MAIN PROCESS {process_id}: Memory usage (MB): {process.memory_info().rss / 1024 ** 2:.2f} MB")
@@ -1006,7 +1010,7 @@ def validate_multiple_matches(
                         df = df_data
                     else:
                         df = pd.concat([df, df_data], axis=0)
-                        df = df.sort_values("logloss", ascending=True).reset_index(drop=True)
+                        df = df.sort_values(optimization_target, ascending=True).reset_index(drop=True)
                         # if len(df) > 20:
                         #     df.loc[20:, expensive_cols] = np.nan
                         if len(df) > 1:
@@ -1031,7 +1035,7 @@ def validate_multiple_matches(
 
                 gc.collect()
         else:
-            for i in range(n_steps):
+            for i in progress_bar(range(n_steps), desc="Simulation", total=n_steps):
                 data = simulate_params_partial(seed=np.random.randint(0, 2**16 - 1))
                 df_data = pd.Series(data).to_frame().T
                 df_data["step_nr"] = i
@@ -1044,7 +1048,7 @@ def validate_multiple_matches(
                     df = df_data
                 else:
                     df = pd.concat([df, df_data], axis=0)
-                    df = df.sort_values("logloss", ascending=True).reset_index(drop=True)
+                    df = df.sort_values(optimization_target, ascending=True).reset_index(drop=True)
                     # if len(df) > 20:
                     #     df.loc[20:, expensive_cols] = np.nan
                     if len(df) > 1:
@@ -1080,8 +1084,7 @@ def validate_multiple_matches(
         df = df_data
         display_df.write(df.head(20))
 
-    # df_training_results = pd.DataFrame(dfs).sort_values("logloss", ascending=True)
-    df_training_results = df.sort_values("logloss", ascending=True).reset_index(drop=True)
+    df_training_results = df.sort_values(optimization_target, ascending=True).reset_index(drop=True)
 
     # move logloss column and brier and auc etc to front
     cols = df_training_results.columns.tolist()
@@ -1095,7 +1098,7 @@ def validate_multiple_matches(
     df_training_results.to_csv("df_training_results.csv", sep=";")
     st.write(f"Wrote results to {os.path.abspath('df_training_results.csv')}")
 
-    best_index = df_training_results["logloss"].idxmin()
+    best_index = df_training_results[optimization_target].idxmin()
     best_parameters = df_training_results["parameters"][best_index]
     best_passes = df_training_results["passes_json"][best_index]
     df_best_passes = pd.read_json(best_passes).copy()

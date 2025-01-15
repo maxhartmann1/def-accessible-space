@@ -58,6 +58,9 @@ ReturnValueXC = collections.namedtuple("ReturnValueXC", [
 ReturnValueDAS = collections.namedtuple("ReturnValueDAS", [
     "acc_space", "das", "frame_index", "player_index", "simulation_result", "dangerous_result"
 ])
+ReturnValueIndividualDAS = collections.namedtuple("ReturnValueDAS", [
+    "acc_space", "das", "player_acc_space", "player_das", "frame_index", "player_index", "simulation_result", "dangerous_result"
+])
 
 
 def _check_presence_of_required_columns(df, str_data, column_names, column_values, additional_message=None):
@@ -142,7 +145,7 @@ def _get_matrix_coordinates(
     if duplicate_index.sum() > 0:
         df_tracking = df_tracking.drop_duplicates(subset=[frame_col, player_col], keep="first")
         assert not df_tracking.loc[i_player].set_index([frame_col, player_col]).index.duplicated().any()
-    if df_tracking.loc[i_player].set_index([frame_col, player_col]).isnull().any().any():
+    if df_tracking.loc[i_player, [frame_col, player_col]].isnull().any().any():
         warnings.warn("Tracking data contains NaN values in the frame-player columns. Removing rows with NaN values.")
         df_tracking = df_tracking.dropna(subset=[frame_col, player_col])
         assert not df_tracking.loc[i_player, [frame_col, player_col]].isnull().any().any()
@@ -158,7 +161,12 @@ def _get_matrix_coordinates(
     C = 4  # number of coordinates per player
     P = df_tracking.loc[i_player, player_col].nunique()  # number of players
 
-    dfp = df_players.stack(level=1, dropna=False)
+    dfp = df_players.stack(level=1, future_stack=True)
+    index = pd.MultiIndex.from_product(
+        [df_players.index, df_players.columns.get_level_values(1).unique()],
+        names=[frame_col, player_col]
+    )
+    dfp = dfp.reindex(index)
 
     PLAYER_POS = dfp.values.reshape(F, P, C)
     frame_to_index = {frame: i for i, frame in enumerate(df_players.index)}
@@ -460,7 +468,7 @@ def get_das_gained(
     das_reception[i_unsuccessful] = 0
     acc_space_reception[i_unsuccessful] = 0
 
-    res = ReturnValueDASGained(
+    result = ReturnValueDASGained(
         acc_space=acc_space,
         das=das,
         acc_space_reception=acc_space_reception,
@@ -468,7 +476,7 @@ def get_das_gained(
         as_gained=acc_space_reception - acc_space, das_gained=das_reception - das,
         simulation_result=ret.simulation_result, frame_index=frame_index, target_frame_index=target_frame_index
     )
-    return res
+    return result
 
 
 def get_expected_pass_completion(
@@ -837,8 +845,10 @@ def get_dangerous_accessible_space(
     # 1. Get attacking direction
     if infer_attacking_direction:
         attacking_direction_col = get_unused_column_name(df_tracking.columns, "attacking_direction")
+        df_tracking.loc[df_tracking[player_col] == ball_player_id, team_col] = None
         df_tracking[attacking_direction_col] = infer_playing_direction(
-            df_tracking, team_col=team_col, period_col=period_col, team_in_possession_col=team_in_possession_col, x_col=x_col
+            df_tracking, team_col=team_col, period_col=period_col, team_in_possession_col=team_in_possession_col,
+            x_col=x_col, ball_team=None,
         )
     if attacking_direction_col is not None:
         fr2playingdirection = df_tracking[[frame_col, attacking_direction_col]].set_index(frame_col).to_dict()[attacking_direction_col]
@@ -875,8 +885,89 @@ def get_dangerous_accessible_space(
     return ReturnValueDAS(as_series, das_series, frame_index, player_index, simulation_result, dangerous_result)
 
 
+def get_individual_dangerous_accessible_space(
+    # Data
+    df_tracking,
+
+    # Tracking schema
+    frame_col="frame_id", player_col="player_id", ball_player_id="ball", team_col="team_id", x_col="x",
+    y_col="y", vx_col="vx", vy_col="vy", attacking_direction_col=None, period_col=_unset,
+    team_in_possession_col="team_in_possession", passer_to_exclude_col=None,
+
+    # Pitch coordinate system
+    x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
+
+    # Options
+    infer_attacking_direction=True,
+    danger_weight=2,
+    chunk_size=20,
+    return_cropped_result=False,
+    additional_fields_to_return=None,
+    use_progress_bar=True,
+
+    # DAS Parameters
+    n_angles=_DEFAULT_N_ANGLES_FOR_DAS,
+    phi_offset=_DEFAULT_PHI_OFFSET,
+    n_v0=_DEFAULT_N_V0_FOR_DAS,
+    v0_min=_DEFAULT_V0_MIN_FOR_DAS,
+    v0_max=_DEFAULT_V0_MAX_FOR_DAS,
+
+    # Simulation parameters
+    pass_start_location_offset=_DEFAULT_PASS_START_LOCATION_OFFSET_FOR_DAS,
+    time_offset_ball=_DEFAULT_TIME_OFFSET_BALL_FOR_DAS,
+    radial_gridsize=_DEFAULT_RADIAL_GRIDSIZE_FOR_DAS,
+    b0=_DEFAULT_B0_FOR_DAS,
+    b1=_DEFAULT_B1_FOR_DAS,
+    player_velocity=_DEFAULT_PLAYER_VELOCITY_FOR_DAS,
+    keep_inertial_velocity=_DEFAULT_KEEP_INERTIAL_VELOCITY_FOR_DAS,
+    use_max=_DEFAULT_USE_MAX_FOR_DAS,
+    v_max=_DEFAULT_V_MAX_FOR_DAS,
+    a_max=_DEFAULT_A_MAX_FOR_DAS,
+    inertial_seconds=_DEFAULT_INERTIAL_SECONDS_FOR_DAS,
+    tol_distance=_DEFAULT_TOL_DISTANCE_FOR_DAS,
+    use_approx_two_point=_DEFAULT_USE_APPROX_TWO_POINT_FOR_DAS,
+    v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS,
+    normalize=_DEFAULT_NORMALIZE_FOR_DAS,
+    use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS,
+):
+    if additional_fields_to_return is None:
+        additional_fields_to_return = []
+    additional_fields_to_return = list(additional_fields_to_return) + ["player_poss_density"]
+
+    ret = get_dangerous_accessible_space(
+        df_tracking,
+        frame_col, player_col, ball_player_id, team_col, x_col, y_col, vx_col, vy_col, attacking_direction_col,
+        period_col, team_in_possession_col, passer_to_exclude_col, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max,
+        infer_attacking_direction, danger_weight, chunk_size, return_cropped_result, additional_fields_to_return,
+        use_progress_bar, n_angles, phi_offset, n_v0, v0_min, v0_max, pass_start_location_offset, time_offset_ball,
+        radial_gridsize, b0, b1, player_velocity, keep_inertial_velocity, use_max, v_max, a_max, inertial_seconds,
+        tol_distance, use_approx_two_point, v0_prob_aggregation_mode, normalize, use_efficient_sigmoid,
+    )
+
+    df_tracking["frame_index"] = ret.frame_index
+    df_tracking["player_index"] = ret.player_index
+
+    areas = integrate_surfaces(ret.simulation_result).player_poss  # F x P
+    dangeorus_areas = integrate_surfaces(ret.dangerous_result).player_poss  # F x P
+
+    def foo(x):
+        return dangeorus_areas[int(x["frame_index"]), int(x["player_index"])]
+
+    i_notna = ret.frame_index.notna() & ret.player_index.notna()
+    df = pd.DataFrame(data=np.array([ret.frame_index, ret.player_index]).transpose(), columns=["frame_index", "player_index"])
+
+    player_acc_space = pd.Series(index=df_tracking.index)
+    player_acc_space[i_notna] = df.loc[i_notna].apply(lambda x: areas[int(x["frame_index"]), int(x["player_index"])], axis=1)
+
+    player_das = pd.Series(index=df_tracking.index)
+    player_das[i_notna] = df.loc[i_notna].apply(lambda x: foo(x), axis=1)
+
+    return ReturnValueIndividualDAS(ret.acc_space, ret.das, player_acc_space, player_das, ret.frame_index, ret.player_index, ret.simulation_result, ret.dangerous_result)
+
+
 def infer_playing_direction(
     df_tracking, team_col="team_id", period_col="period_id", team_in_possession_col="team_in_possession", x_col="x",
+    ball_team=None,
 ):
     """
     Automatically infer playing direction based on the mean x position of each teams in each period.
@@ -907,10 +998,22 @@ def infer_playing_direction(
     else:
         _period_col = period_col
 
-    for period_id, df_tracking_period in df_tracking.groupby(_period_col):
+    teams = set(df_tracking[team_col].dropna().tolist() + df_tracking[team_in_possession_col].dropna().tolist())
+    if ball_team is not None:
+        teams = [team for team in teams if team != ball_team]
+
+    if len(teams) != 2:
+        warnings.warn(f"Did not find exactly 2 teams while inferring playing direction: {teams}, so inferred playing direction may be wrong. Check if data has data from exactly 2 teams and specify 'ball_team' if the ball has a non-None team id.")
+
+    if ball_team is not None:
+        df_tracking_for_mean = df_tracking[df_tracking[team_col] != ball_team]
+    else:
+        df_tracking_for_mean = df_tracking
+
+    for period_id, df_tracking_period in df_tracking_for_mean.groupby(_period_col):
         x_mean = df_tracking_period.groupby(team_col)[x_col].mean()
         smaller_x_team = x_mean.idxmin()
-        greater_x_team = x_mean.idxmax()
+        greater_x_team = [team for team in teams if team != smaller_x_team][0]
         playing_direction[period_id] = {smaller_x_team: 1, greater_x_team: -1}
 
     new_attacking_direction = pd.Series(index=df_tracking.index, dtype=np.float64)
@@ -947,14 +1050,14 @@ def plot_expected_completion_surface(simulation_result: SimulationResult, frame_
 
     areas = 10
     levels = np.linspace(start=0, stop=np.max(z)+0.00001, num=areas + 1, endpoint=True)
-    saturations = [x / (areas) for x in range(areas)]
+    saturations = [x / areas for x in range(areas)]
     base_color = matplotlib.colors.to_rgb(color)
 
     colors = [_adjust_saturation(base_color, s) for s in saturations]
 
     # Create a triangulation
     triang = matplotlib.tri.Triangulation(x, y)
-    cp = plt.tricontourf(x, y, z.T, colors=colors, alpha=0.1, cmap=None, levels=levels)  # Comment in to use [0, 1] scale
+    plt.tricontourf(x, y, z.T, colors=colors, alpha=0.1, cmap=None, levels=levels)  # Comment in to use [0, 1] scale
     plt.tricontourf(triang, z.T, colors=colors, alpha=0.1, cmap=None, levels=levels)  # Comment in to use [0, 1] scale
 
     if plot_gridpoints:
