@@ -348,7 +348,7 @@ def get_das_gained(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS,
     normalize=_DEFAULT_NORMALIZE_FOR_DAS,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS,
-):
+) -> ReturnValueDASGained:
     """
     >>> pd.set_option("display.max_columns", None)
     >>> pd.set_option("display.expand_frame_repr", False)
@@ -539,7 +539,7 @@ def get_expected_pass_completion(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE,
     normalize=_DEFAULT_NORMALIZE,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID,
-):
+) -> ReturnValueXC:
     """
     Calculate Expected Pass Completion (xC) for the given passes, using the given tracking data.    
 
@@ -761,7 +761,7 @@ def get_dangerous_accessible_space(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS,
     normalize=_DEFAULT_NORMALIZE_FOR_DAS,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS,
-):
+) -> ReturnValueDAS:
     """
     >>> pd.set_option("display.max_columns", None)
     >>> pd.set_option("display.expand_frame_repr", False)
@@ -933,7 +933,7 @@ def get_individual_dangerous_accessible_space(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS,
     normalize=_DEFAULT_NORMALIZE_FOR_DAS,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS,
-):
+) -> ReturnValueIndividualDAS:
     if additional_fields_to_return is None:
         additional_fields_to_return = []
     additional_fields_to_return = list(additional_fields_to_return) + ["player_poss_density"]
