@@ -25,7 +25,6 @@ from accessible_space.utility import get_unused_column_name, progress_bar
 from accessible_space.interface import per_object_frameify_tracking_data, get_expected_pass_completion
 from accessible_space.core import PARAMETER_BOUNDS
 
-os.system("pip install brokenaxes")
 
 cache_dir = os.path.join(os.path.dirname(__file__), ".joblib-cache")
 memory = joblib.Memory(verbose=0)
@@ -261,14 +260,17 @@ def get_kloppy_events(dataset_nr):
 
 
 @st.cache_resource
-def get_metrica_data():
+def get_metrica_data(dummy=False):
     datasets = []
     dfs_event = []
     st.write(" ")
     st.write(" ")
     progress_bar_text = st.empty()
     st_progress_bar = st.progress(0)
-    for dataset_nr in [1, 2, 3]:
+    datasets = [1, 2, 3]
+    if dummy:
+        datasets = [1, 3]
+    for dataset_nr in datasets:
     # for dataset_nr in [3]:
         progress_bar_text.text(f"Loading dataset {dataset_nr}")
         # dataset = kloppy.metrica.load_tracking_csv(
@@ -361,8 +363,11 @@ def get_metrica_data():
         df_tracking_obj = df_tracking_obj.sort_values("frame_id")
         df_tracking_obj["ball_possession"] = df_tracking_obj["ball_possession"].ffill()
 
-        datasets.append(df_tracking_obj)
+        if dummy:
+            df_events = df_events.iloc[:100]
+            df_tracking_obj = df_tracking_obj[df_tracking_obj["frame_id"].isin(df_events["frame_id"].unique())]
 
+        datasets.append(df_tracking_obj)
         dfs_event.append(df_events)
 
         st_progress_bar.progress(dataset_nr / 3)
@@ -707,6 +712,12 @@ def bin_nr_calibration_plot(df, prediction_col="xc", outcome_col="success", n_bi
                 bbox=dict(boxstyle='round,pad=0.3', edgecolor='black', facecolor='lightblue'),
                 fontsize=7, ha='center', va='center'
             )
+
+    # xticks every 0.1
+    ax.set_xticks(np.arange(0, 1.1, 0.1))
+    ax.set_xticklabels([f"{i:.1f}" for i in np.arange(0, 1.1, 0.1)])
+    ax.set_yticks(np.arange(0, 1.1, 0.1))
+    ax.set_yticklabels([f"{i:.1f}" for i in np.arange(0, 1.1, 0.1)])
 
     ax.set_xlabel("Predicted probability")
     ax.set_ylabel("Observed probability")
@@ -1116,14 +1127,14 @@ def validate_multiple_matches(
     def frag1():
         n_bins = st.number_input("Number of bins for calibration plot", value=10, min_value=1, max_value=None)
         add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text1")
-        style = st.selectbox("Style", plt.style.available, index=plt.style.available.index("seaborn-v0_8"))
+        style = st.selectbox("Style", plt.style.available, index=plt.style.available.index("seaborn-v0_8"), key="style1")
         st.write(bin_nr_calibration_plot(df_best_passes, outcome_col=outcome_col, n_bins=n_bins, add_text=add_text, style=style))
 
     @st.fragment
     def frag2():
         binsize = st.number_input("Binsize for calibration plot", value=0.1, min_value=0.01, max_value=None)
         add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text2")
-        style = st.selectbox("Style", plt.style.available, index=plt.style.available.index("seaborn-v0_8"))
+        style = st.selectbox("Style", plt.style.available, index=plt.style.available.index("seaborn-v0_8"), key="style2")
         st.write(bin_nr_calibration_plot(df_best_passes, outcome_col=outcome_col, binsize=binsize, add_text=add_text, style=style))
 
     @st.fragment
@@ -1281,9 +1292,9 @@ def validate_multiple_matches(
     # return
 
 
-def validation_dashboard():
+def validation_dashboard(dummy=False):
     st.write(f"Getting kloppy data...")
-    dfs_tracking, dfs_event = get_metrica_data()
+    dfs_tracking, dfs_event = get_metrica_data(dummy=dummy)
 
     ### DAS vs x_norm
     # for df_tracking, df_event in zip(dfs_tracking, dfs_event):
@@ -1341,15 +1352,15 @@ def validation_dashboard():
     return
 
 
-def main(run_as_streamlit_app=True):
+def main(run_as_streamlit_app=True, dummy=False):
     if run_as_streamlit_app:
         key_argument = "run_dashboard"
         if len(sys.argv) == 2 and sys.argv[1] == key_argument:
-            validation_dashboard()
+            validation_dashboard(dummy=dummy)
         else:  # if script is called directly, call it again with streamlit
             subprocess.run(['streamlit', 'run', os.path.abspath(__file__), key_argument], check=True)
     else:
-        validation_dashboard()
+        validation_dashboard(dummy=dummy)
 
 
 if __name__ == '__main__':
