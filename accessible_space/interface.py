@@ -568,7 +568,7 @@ def get_expected_pass_completion(
     _check_pitch_dimensions(x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max)
 
     if not set(df_passes[event_team_col].unique()).issubset(set(df_tracking[tracking_team_col].unique())):
-        warnings.warn(f"Teams in passes data do not match teams in tracking data: {set(df_passes[event_team_col].unique())} is not a subset of {set(df_tracking[tracking_team_col].unique())}")
+        raise ValueError(f"Teams in passes data do not match teams in tracking data: {set(df_passes[event_team_col].unique())} is not a subset of {set(df_tracking[tracking_team_col].unique())}")
 
     if not use_event_team_as_team_in_possession:
         if tracking_team_in_possession_col is None:

@@ -111,6 +111,14 @@ def _get_double_butterfly_data():
     return df_tracking
 
 
+@pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
+def test_non_matching_teams(_get_data):
+    df_pass_safe, df_pass_risky, df_tracking = _get_data()
+    df_pass_safe["team_id"] = "bömf"
+    with pytest.raises(ValueError, match="do not match"):
+        accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking)
+
+
 def test_no_poss_artifact_around_passer():
     _, _, df_tracking = _get_butterfly_data()
 
