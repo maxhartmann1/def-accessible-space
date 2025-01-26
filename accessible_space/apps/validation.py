@@ -100,8 +100,8 @@ def bootstrap_auc_ci(y_true, y_pred, n_iterations=1000, conf_level=0.95):
 
 
 @memory.cache
-def get_metrica_tracking_data(dataset_nr):
-    dataset = kloppy.metrica.load_open_data(dataset_nr)  # , limit=100)
+def get_metrica_tracking_data(dataset_nr, limit=None):
+    dataset = kloppy.metrica.load_open_data(dataset_nr, limit=None)
     df_tracking = dataset.to_df()
     return df_tracking
 
@@ -267,10 +267,8 @@ def get_metrica_data(dummy=False):
     st.write(" ")
     progress_bar_text = st.empty()
     st_progress_bar = st.progress(0)
-    datasets = [1, 2, 3]
-    if dummy:
-        datasets = [1, 3]
-    for dataset_nr in datasets:
+    dataset_nrs = [1, 2, 3] if not dummy else [1, 3]
+    for dataset_nr in dataset_nrs:
     # for dataset_nr in [3]:
         progress_bar_text.text(f"Loading dataset {dataset_nr}")
         # dataset = kloppy.metrica.load_tracking_csv(
@@ -608,15 +606,19 @@ def get_scores(_df, baseline_accuracy, outcome_col="success", add_confidence_int
     return data
 
 
-def calibration_histogram(df, hist_col="xc", n_bins=None, binsize=None, add_text=True, use_boken_axis=True):
+def calibration_histogram(df, hist_col="xc", synth_col="is_synthetic", n_bins=None, binsize=None, add_text=True, use_boken_axis=True):
+    plt.rcParams.update(plt.rcParamsDefault)
     plt.style.use("seaborn-v0_8")
     plt.figure()
+
+    # reset style
 
     if use_boken_axis:
         import brokenaxes
         bax = brokenaxes.brokenaxes(xlims=((0, 1),), ylims=((0, 400), (1600, 1650)), hspace=0.125)
     else:
         bax = plt.gca()
+    plt.title("Distribution of predicted pass success rates in training set")
 
     # x = np.linspace(0, 1, 100)
     # bax.plot(x, np.sin(10 * x), label='sin')
@@ -643,16 +645,38 @@ def calibration_histogram(df, hist_col="xc", n_bins=None, binsize=None, add_text
         'axes.spines.right': False,
         'axes.spines.top': False,
     }
+    plt.rcParams.update({
+        'axes.facecolor': 'gray',
+        'axes.edgecolor': 'black',
+        'axes.grid': True,
+        'grid.color': '.8',
+        'grid.linestyle': '-',
+        'axes.spines.top': False,
+        'axes.spines.right': False,
+        'xtick.bottom': True,
+        'ytick.left': True,
+        'axes.titlesize': 16,
+        'axes.labelsize': 14,
+        'xtick.labelsize': 12,
+        'ytick.labelsize': 12,
+        'legend.frameon': False,
+        'legend.fontsize': 12,
+        'figure.facecolor': 'gray',
+        'font.family': 'sans-serif',
+        'font.sans-serif': ['Arial', 'DejaVu Sans', 'Liberation Sans'],
+        'lines.linewidth': 1.5,
+        'lines.markersize': 6,
+    })
     plt.rcParams.update(custom_style)
 
     # plt.hist(data, bins=30, stacked=True, label=['Data 1', 'Data 2', 'Data 3'], color=['blue', 'green', 'red'])
     import matplotlib.cm
     cmap = matplotlib.cm.get_cmap('viridis')  # or 'plasma', 'inferno', etc.
 
-    groups = [(is_synthetic, df) for is_synthetic, df in df.groupby("is_synthetic")]
+    groups = [(is_synthetic, df) for is_synthetic, df in df.groupby(synth_col)]
     dfs = [group[1] for group in groups]
     # plt.hist([df["xc"] for df in dfs], stacked=True, bins=n_bins, label=[f"Synthetic={group[0]}" for group in groups])
-    bax.hist([df["xc"] for df in dfs], stacked=True, bins=n_bins, density=False,
+    bax.hist([df[hist_col] for df in dfs], stacked=True, bins=n_bins, density=False,
              label=[f"{'Synthetic passes' if group[0] else 'Real passes'}" for group in groups],
              color=[cmap(i / len(groups)) for i in range(len(groups))]
              )
@@ -666,9 +690,14 @@ def calibration_histogram(df, hist_col="xc", n_bins=None, binsize=None, add_text
     plt.gca().set_xticks(np.arange(0, 1.1, 0.1))
     plt.gca().set_xticklabels([f"{i:.1f}" for i in np.arange(0, 1.1, 0.1)])
 
+    # thin y grid
 
-    bax.set_xlabel("Predicted probability")
-    bax.set_ylabel("Number of passes")
+
+    # plt.gca().set_xlabel("X Axis", labelpad=20)  # Move X label down
+    # plt.gca().set_ylabel("Y Axis", labelpad=20)  # Move Y label left
+
+    bax.set_xlabel("Predicted pass success probability", labelpad=7)
+    bax.set_ylabel("Number of passes in training set", labelpad=35)
 
     # bax.annotate('xxxx (synthetic passes)', xy=(0.1, 400), xytext=(0.1, 300),
     #             arrowprops=dict(facecolor='yellow', arrowstyle='->', lw=2, ls='dashed', color='yellow'),
@@ -678,9 +707,17 @@ def calibration_histogram(df, hist_col="xc", n_bins=None, binsize=None, add_text
     plt.gca().xaxis.grid(color='gray', linestyle='dashed', alpha=0.5)
     plt.gca().yaxis.grid(color='gray', linestyle='dashed', alpha=0.5)
 
-    bax.legend(loc='upper right', fontsize=12)
+    bax.legend(loc='upper right', fontsize=12, frameon=True)
+
+    plt.rcParams.update(plt.rcParamsDefault)
 
     return plt.gcf()
+
+
+df = pd.DataFrame({"a": [0, 1], "is_synthetic": [True, False]})
+st.write(calibration_histogram(df, "a", n_bins=2))
+# st.stop()
+
 
 def bin_nr_calibration_plot(df, prediction_col="xc", outcome_col="success", n_bins=None, binsize=None, add_text=True, style="seaborn-v0_8"):
     bin_col = get_unused_column_name(df.columns, "bin")
@@ -809,6 +846,9 @@ def simulate_parameters(df_training, dfs_tracking, use_prefit, seed, add_confide
     dfs_training_passes = []
     for dataset_nr, df_training_passes in df_training.groupby("dataset_nr"):
         df_training_passes = df_training_passes.copy()
+        st.write("df_training_passes")
+        st.write(df_training_passes)
+        # df_training_passes = df_training_passes[df_training_passes["event_type"] == "PASS"]
         df_tracking = dfs_tracking[dataset_nr].copy()
         ret = get_expected_pass_completion(
             df_training_passes, df_tracking, event_frame_col="frame_id", tracking_frame_col="frame_id",
@@ -1125,23 +1165,23 @@ def validate_multiple_matches(
 
     @st.fragment
     def frag1():
-        n_bins = st.number_input("Number of bins for calibration plot", value=10, min_value=1, max_value=None)
+        n_bins = st.number_input("Number of bins for calibration plot", value=10, min_value=1, max_value=None, key="frag1")
         add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text1")
         style = st.selectbox("Style", plt.style.available, index=plt.style.available.index("seaborn-v0_8"), key="style1")
         st.write(bin_nr_calibration_plot(df_best_passes, outcome_col=outcome_col, n_bins=n_bins, add_text=add_text, style=style))
 
     @st.fragment
     def frag2():
-        binsize = st.number_input("Binsize for calibration plot", value=0.1, min_value=0.01, max_value=None)
+        binsize = st.number_input("Binsize for calibration plot", value=0.1, min_value=0.01, max_value=None, key="frag2")
         add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text2")
         style = st.selectbox("Style", plt.style.available, index=plt.style.available.index("seaborn-v0_8"), key="style2")
         st.write(bin_nr_calibration_plot(df_best_passes, outcome_col=outcome_col, binsize=binsize, add_text=add_text, style=style))
 
     @st.fragment
     def frag3():
-        st.write("HIST")
-        use_boken_axis = st.checkbox("Use broken axis", value=True)
+        use_boken_axis = st.checkbox("Use broken axis", value=True, key="frag3")
         st.write(calibration_histogram(df_best_passes, n_bins=40, use_boken_axis=use_boken_axis))
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag3_training.png"), dpi=300)
 
     frag1()
     frag2()
@@ -1234,15 +1274,25 @@ def validate_multiple_matches(
     @st.fragment
     def frag1_test():
         n_bins = st.number_input("Number of bins for calibration plot", value=10, min_value=1, max_value=None, key="frag1_test")
-        st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, n_bins=n_bins))
+        add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text1_test")
+        st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, n_bins=n_bins, add_text=add_text))
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag1_test.png"), dpi=300)
 
     @st.fragment
     def frag2_test():
         binsize = st.number_input("Binsize for calibration plot", value=0.1, min_value=0.01, max_value=None, key="frag2_test")
-        st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, binsize=binsize))
+        add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text2_test")
+        st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, binsize=binsize, add_text=add_text))
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag2_test.png"), dpi=300)
+
+    @st.fragment
+    def frag3_test():
+        use_boken_axis = st.checkbox("Use broken axis", value=True, key="frag4_test")
+        st.write(calibration_histogram(df_simres_test, n_bins=40, use_boken_axis=use_boken_axis))
 
     frag1_test()
     frag2_test()
+    frag3_test()
     # st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, n_bins=10))
     # st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, n_bins=20))
 
@@ -1340,7 +1390,7 @@ def validation_dashboard(dummy=False):
         # dfs_passes.append(df_passes.iloc[125:126])
         dfs_passes.append(df_passes)
 
-        for _, p4ss in df_passes.iloc[125:126].iterrows():
+        for _, p4ss in df_passes.iloc[:1].iterrows():
             plot_pass(p4ss, df_tracking)
 
     # validate()
