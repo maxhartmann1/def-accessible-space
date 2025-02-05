@@ -1,5 +1,6 @@
 import importlib
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -16,7 +17,7 @@ def _get_butterfly_data():
         "y": [0, 0, 0, 0],
         "vx": [0, 0, 0, 15],
         "vy": [0, 0, 0, 0],
-        "team_id": ["H", "H", "A", None],
+        "team_id": ["H", "H", "A", "BALL"],
         "player_color": ["blue", "blue", "red", "black"],
         "team_in_possession": ["H"] * 4,
         "player_in_possession": ["a"] * 4,
@@ -108,6 +109,14 @@ def _get_double_butterfly_data():
     # plt.show()
 
     return df_tracking
+
+
+@pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
+def test_non_matching_teams(_get_data):
+    df_pass_safe, df_pass_risky, df_tracking = _get_data()
+    df_pass_safe["team_id"] = "bömf"
+    with pytest.raises(ValueError, match="do not match"):
+        accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking)
 
 
 def test_no_poss_artifact_around_passer():
@@ -538,7 +547,7 @@ def test_player_level_consistent_with_team_level(_get_data):
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
 def test_infer_playing_direction(_get_data):
     _, _, df_tracking = _get_data()
-    df_tracking["playing_direction"] = accessible_space.infer_playing_direction(df_tracking, period_col=None)
+    df_tracking["playing_direction"] = accessible_space.infer_playing_direction(df_tracking, period_col=None, ball_team="BALL")
     assert (df_tracking["playing_direction"] == 1).all()
 
 @pytest.mark.parametrize("df_tracking,period_col,exception,exception_message_substring", [
@@ -684,6 +693,11 @@ def test_minimal_das_runs_error_free():
     accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None)
 
 
+def test_minimal_das_player_runs_error_free():
+    df_tracking = pd.DataFrame({"frame_id": [1, 1, 1, 1], "player_id": ["a", "ball", "b", "c"], "team_id": ["H", None, "A", "H"], "x": [0, 0, 1, 2], "y": [0, 0, 1, 2], "vx": [0, 0, 1, 2], "vy": [0, 0, 1, 2], "team_in_possession": ["H", "H", "H", "H"]})
+    accessible_space.get_individual_dangerous_accessible_space(df_tracking, period_col=None)
+
+
 def test_minimal_xc_runs_error_free():
     df_tracking = pd.DataFrame({"frame_id": [1, 1, 1, 1], "player_id": ["a", "ball", "b", "c"], "team_id": ["H", None, "A", "H"], "x": [0, 0, 1, 2], "y": [0, 0, 1, 2], "vx": [0, 0, 1, 2], "vy": [0, 0, 1, 2], "team_in_possession": ["H", "H", "H", "H"]})
     df_passes = pd.DataFrame({"frame_id": [1, 1], "player_id": ["a", "a"], "team_id": ["H", "H"], "x": [0, 0], "x_target": [1, 1], "y": [2, 2], "y_target": [3, 3]})
@@ -773,6 +787,7 @@ def test_fields_to_return_others_are_not_present(_get_data):
 def test_surface_plot(_get_data):
     _, _, df_tracking = _get_data()
     ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=[field for field in accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN if "density" in field])
+    matplotlib.use("Agg")
 
     def _plot():
         plt.figure()
