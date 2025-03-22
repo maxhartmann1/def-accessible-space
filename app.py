@@ -1,23 +1,27 @@
-from tkinter import EXCEPTION
+from turtle import home
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import time
-import accessible_space
-import optimize_def, resources, prep_das_def
+import defensive_das
 from databallpy.visualize import plot_soccer_pitch, plot_tracking_data
+from databallpy.utils.constants import OPEN_MATCH_IDS_DFL
 
 
-def load_match():
-    start_time = time.time()
-    match = prep_das_def.load_match_data("metrica")
-    prep_match = prep_das_def.prep_match_data(match)
-    st.write(f"Match-Daten geladen in {time.time() - start_time:.2f} Sekunden")
+def load_match(provider, match_id):
+    match = defensive_das.load_match_data(provider, match_id)
+    prep_match = defensive_das.prep_match_data(match)
     return prep_match
 
 
-def frameify_tracking(match, df_tracking_reduced):
+def get_open_source_matches():
+    matches = OPEN_MATCH_IDS_DFL
+    matches["metrica"] = "Metrica Anonymisiertes Spiel"
+    return matches
+
+
+def frameify_tracking_data(df_tracking, match):
     coordinate_cols = []
     player_to_team = {}
     players = match.get_column_ids()
@@ -26,143 +30,285 @@ def frameify_tracking(match, df_tracking_reduced):
         coordinate_cols.append([f"{player}_x", f"{player}_y"])
         player_to_team[str(player)] = player.split("_")[0]
 
-    df_tracking = prep_das_def.prep_tracking_frame_by_frame(
-        df_tracking_reduced, coordinate_cols, players, player_to_team
+    df_tracking = defensive_das.frameify_tracking_data(
+        df_tracking, match.frame_rate, coordinate_cols, players, player_to_team
     )
     return df_tracking
 
 
-def get_frames_per_second(match):
-    df = match.tracking_data.copy()
-    df["timestamp_sec"] = df["datetime"].dt.floor("s")
-    grouped_df = df.groupby("timestamp_sec").size().reset_index(name="Anzahl")
-    return grouped_df["Anzahl"].iloc[0]
+def filter_tracking_df_for_das(
+    df, minute_frame_rate, frame_rate, method="frame_rate", dead_ball=True
+):
+    if dead_ball:
+        df = df[df["ball_status"] == "alive"]
+    if method == "frame_rate":
+        filter_step = int((frame_rate * 60) / minute_frame_rate)
+        return df[frame_rate::filter_step]
+    else:
+        return df
 
 
-def filter_tracking_data_pre_frameify(df, n, x):
-    return df.iloc[n::x]
+def calculate_dangerous_accessible_space(df_frameified):
+    return defensive_das.get_dangerous_accessible_space(df_frameified)
 
 
-def filter_tracking_data_post_frameify(df, n, x):
-    return df[df["frame"].isin(range(n, df["frame"].max() + 1, x))]
-
-
-def plot_frame(match, frame, pitch_result, das_frame_index, df_pre_frame):
-    idx = match.tracking_data.index[match.tracking_data["frame"] == frame].tolist()[0]
-    idx_das = pitch_result.frame_index[das_frame_index]
-    fig, ax = plt.subplots(figsize=(10, 6))
-    fig, ax = plot_soccer_pitch(
-        fig=fig, ax=ax, field_dimen=match.pitch_dimensions, pitch_color="white"
-    )
-    fig, ax = plot_tracking_data(
-        match,
-        idx,
-        fig=fig,
-        ax=ax,
-        team_colors=["blue", "red"],
-        variable_of_interest=round(float(pitch_result.das.iloc[idx_das]), 2),
-        add_player_possession=True,
-    )
-    try:
-        accessible_space.plot_expected_completion_surface(
-            pitch_result.dangerous_result, frame_index=idx_das
-        )
-    except:
-        st.warning(f"Fehler beim Plotten von DAS")
-
-    for _, row in df_pre_frame.iterrows():
-        if row["team_id"] != row["ball_possession"] and row["team_id"] != "ball":
-            player_x, player_y = row["player_x"], row["player_y"]
-            circle = plt.Circle(
-                (player_x, player_y),
-                color=resources.get_team_colors()[row["team_id"]],
-                alpha=0.3,
-                fill=True,
-            )
-            ax.add_patch(circle)
-    st.pyplot(fig)
-
-
-def show_tracking_data(match, frame):
-    if "show_tracking_data" in st.session_state and st.session_state.show_tracking_data:
-        st.write("### Tracking-Daten für den aktuellen Frame")
-        st.dataframe(match.tracking_data.iloc[frame])
-
-
-def show_event_data(df_passes):
-    if "show_event_data" in st.session_state and st.session_state.show_event_data:
-        st.write("### Event Daten für Match")
-        st.dataframe(df_passes)
-
-
-def main():
-    st.title("Interaktive Fussball-Analyse")
-    match = load_match()
-    fps = get_frames_per_second(match)
-    df_passes, kick_off_frame = prep_das_def.event_data_prep(match)
-    df_tracking_reduced = filter_tracking_data_pre_frameify(
-        match.tracking_data, kick_off_frame, fps
-    )
-    df_frameified = frameify_tracking(match, df_tracking_reduced)
-    df_tracking = filter_tracking_data_post_frameify(
-        df_frameified, kick_off_frame + 1, fps * 60
-    )
-    df_tracking_ball = df_tracking[df_tracking["player_id"] == "ball"].reset_index(
-        drop=True
+def one_frame_optimization(
+    frame_amount, df_tracking_ball, match, pitch_result, df_frameified
+):
+    # Frame Auswahl
+    input_index = st.number_input(
+        "Index für Frame zu printen",
+        0,
+        frame_amount - 1,
+        value=st.session_state.input_index,
+        step=1,
+        key="frame_input",
     )
 
-    start_time = time.time()
-    pitch_result = prep_das_def.get_dangerous_accessible_space(df_tracking)
-    df_tracking["AS"] = pitch_result.acc_space
-    df_tracking["DAS"] = pitch_result.das
-    st.write(
-        f"Dangerous Accessible Space Calculation in {time.time() - start_time:.2f} Sekunden"
-    )
-
-    # Slider und Frame Auswahl
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        index = st.slider(
-            "Wähle Frame-Index", 0, len(df_tracking_ball) - 1, 0, key="index_slider"
-        )
-    with col2:
-        index_input = st.number_input(
-            "Direkte Index-Eingabe",
-            0,
-            len(df_tracking_ball) - 1,
-            value=index,
-            step=1,
-            key="frame_input",
-        )
-
-    frame = df_tracking_ball["frame"].iloc[index]
-    das_frame_index = index * 60
-
-    if index_input != index:
-        index = index_input
-    if "last_index" not in st.session_state or st.session_state.last_index != index:
-        frame = df_tracking_ball["frame"].iloc[index]
-        das_frame_index = index * 60
-        st.session_state.show_tracking_data = False
-        st.session_state.last_index = index
+    frame = df_tracking_ball["frame"].iloc[input_index]
+    if (
+        "last_index" not in st.session_state
+        or st.session_state.last_index != input_index
+    ):
+        frame = df_tracking_ball["frame"].iloc[input_index]
+        st.session_state.last_index = input_index
 
     st.write(f"Aktuell gewählter Frame: {frame}")
 
-    # Framefiy - Dangerous Accessible acc_space
-    df_pre_frame = optimize_def.get_recheable_area(
-        df_frameified, das_frame_index, frame, fps, kick_off_frame + 1
+    df_pre_frame = defensive_das.get_pre_frames(
+        match.tracking_data, match.frame_rate, frame
     )
 
+    df_pre_frame = frameify_tracking_data(df_pre_frame, match)
+    match_optimized, df_optimized, pitch_result_optimized = (
+        defensive_das.calculate_optimal_das_one_frame(
+            pitch_result, df_frameified, df_pre_frame, match, input_index, frame
+        )
+    )
+    return (
+        frame,
+        input_index,
+        df_pre_frame,
+        match_optimized,
+        df_optimized,
+        pitch_result_optimized,
+    )
+
+
+def all_frame_optimization(match, frame_list, pitch_result, df_frameified):
+    df_pre_frames = defensive_das.get_pre_frames(
+        match.tracking_data, match.frame_rate, frame_list=frame_list
+    )
+    df_pre_frames = frameify_tracking_data(df_pre_frames, match)
+    df_das_changes, df_tracking_opt = defensive_das.calculate_optimal_das_all_frames(
+        pitch_result, df_frameified, df_pre_frames, match, frame_list
+    )
+    return df_das_changes, df_tracking_opt
+
+
+def single_player_optimize(
+    match, frame_list, df_frameified, pitch_result, player_column_id
+):
+    df_pre_frames = defensive_das.get_pre_frames(
+        match.tracking_data, match.frame_rate, frame_list=frame_list
+    )
+    # df_pre_frames = frameify_tracking_data(df_pre_frames, match)
+    df_frameified_simulations = defensive_das.single_player_das_optimization(
+        df_frameified, pitch_result, df_pre_frames, match, frame_list, player_column_id
+    )
+    return df_frameified_simulations
+
+
+def reduce_df_simulations(df_frameified_simulations):
+    df_frameified_simulations = df_frameified_simulations[
+        df_frameified_simulations["opt_player"]
+        == df_frameified_simulations["player_id"]
+    ]
+
+
+def click_button(button):
+    if button not in st.session_state:
+        st.session_state[button] = True
+    else:
+        st.session_state[button] = not st.session_state[button]
+
+
+def reset_possesion():
+    st.session_state.possesion_value_home = 0
+
+
+# -------------------------------------------------------------
+
+
+def main():
+    # if "minute_frame_rate" not in st.session_state:
+    #     st.session_state.minute_frame_rate = 1
+    # if "input_index" not in st.session_state:
+    #     st.session_state.input_index = 0
+    # if "one_frame_clicked" not in st.session_state:
+    #     st.session_state.one_frame_clicked = False
+    # if "all_frame_clicked" not in st.session_state:
+    #     st.session_state.all_frame_clicked = False
+
+    st.write(st.session_state)
+    # Überschrift Streamlit Page
+    st.markdown(
+        "<h1 style='text-align: center;'>Defensive Metric based on DAS</h1>",
+        unsafe_allow_html=True,
+    )
+    # Verfügbare Spiele laden
+    col1, col2 = st.columns(2)
+    matches = get_open_source_matches()
+    with col1:
+        st.write("### Match auswählen")
+        match_id = st.selectbox(
+            "Open Source Match auswählen",
+            matches,
+            index=7,
+            format_func=lambda x: matches[x],
+            on_change=reset_possesion,
+        )
+    provider = "metrica" if match_id == "metrica" else "dfl"
+
+    # Ausgewähltes Spiel laden
+    start_time = time.time()
+    match = load_match(provider, match_id)
+    with col1:
+        st.write(
+            f"{match.home_team_name} {match.home_score} - {match.away_score} {match.away_team_name} provided by {match.tracking_data_provider} mit Frame Rate von {match.frame_rate} Frames / Sekunde."
+        )
+
+    # Anzahl zu verarbeitender Frames wählen
+    with col2:
+        st.write("### Frame-Rate reduzieren")
+        minute_frame_rate = st.number_input(
+            "Frames pro Minute",
+            min_value=1,
+            max_value=match.frame_rate * 60,
+            key="minute_frame_rate",
+        )
+        st.number_input(
+            "Ballbesitz Heimteam in %",
+            min_value=0,
+            max_value=99,
+            key="possesion_value_home",
+        )
+    df_tracking_filtered = filter_tracking_df_for_das(
+        match.tracking_data, minute_frame_rate, match.frame_rate
+    )
+    df_frameified = frameify_tracking_data(df_tracking_filtered, match)
+    st.write(
+        f"**Preprocessing für DAS Calculation in {time.time() - start_time:.2f} Sekunden**"
+    )
+    st.divider()
+    # ---------------------------------------------------------
+
+    st.write("### DAS Berechnung durchführen")
+    df_tracking_ball = df_frameified[df_frameified["player_id"] == "ball"].reset_index(
+        drop=True
+    )
+    start_time = time.time()
+    pitch_result = calculate_dangerous_accessible_space(df_frameified)
+    df_frameified["AS"] = pitch_result.acc_space
+    df_frameified["DAS"] = pitch_result.das
+    frame_amount = df_frameified["frame"].nunique()
+    frame_list = df_frameified["frame"].unique()
+    st.write(
+        f"**Dangerous Accessible Space Calculation in {time.time() - start_time:.2f} Sekunden** mit {frame_amount} Frames"
+    )
+    defensive_das.plot_total_das(df_frameified)
+    st.divider()
+    # ---------------------------------------------------------
+
+    # Optimierung von 1 Frame für Entwicklungszwecke / Testen, für tatsächliche Auswertungen wertlos
+    # >>> st.button("Optimierung Ein Frame", on_click=click_button, args=["one_frame"])
+    # if st.session_state.one_frame_clicked:
+    #     (
+    #         frame,
+    #         input_index,
+    #         df_pre_frame,
+    #         match_optimized,
+    #         df_optimized,
+    #         pitch_result_optimized,
+    #     ) = one_frame_optimization(
+    #         frame_amount, df_tracking_ball, match, pitch_result, df_frameified
+    #     )
+    #     fig, ax = defensive_das.plot_frame_origin(
+    #         match, frame, pitch_result, input_index, df_pre_frame
+    #     )
+    #     fig, ax = defensive_das.plot_optimal_positions(
+    #         fig, ax, match_optimized, frame
+    #     )
+    #     if st.toggle("Plot Field"):
+    #         st.pyplot(fig)
+    home_players = match.home_players[["id", "full_name", "position"]].copy()
+    home_players["team_id"] = "Home"
+    away_players = match.away_players[["id", "full_name", "position"]].copy()
+    away_players["team_id"] = "Away"
+    players = pd.concat([home_players, away_players], ignore_index=True)
+    player_id = st.selectbox(
+        "Spieler auswählen",
+        players,
+        format_func=lambda x: f"{players.loc[players['id'] == x, 'full_name'].values[0]}: {players.loc[players['id'] == x, 'position'].values[0]} ({players.loc[players['id'] == x, 'team_id'].values[0]} Team)",
+    )
+    player_column_id = match.player_id_to_column_id(player_id)
+    st.button(
+        "DAS allowed berechnen für Spieler",
+        on_click=click_button,
+        args=["single_player"],
+    )
+
+    # with col2:
+    #     st.button("Optimierung Gesamtteam", on_click=click_button, args=["team"])
+
+    if "single_player" in st.session_state and st.session_state.single_player:
+        start_time = time.time()
+        df_frameified_simulations = single_player_optimize(
+            match, frame_list, df_frameified, pitch_result, player_column_id
+        )
+        st.write(
+            f"Optimierung auf Spielerlevel in {time.time() - start_time:.2f} Sekunden"
+        )
+
+        st.dataframe(df_frameified_simulations)
+
+    # if "all_frame_clicked" in st.session_state and st.session_state.all_frame_clicked:
+    #     start_time = time.time()
+    #     df_das_changes, df_tracking_opt = all_frame_optimization(
+    #         match, frame_list, pitch_result, df_frameified
+    #     )
+    #     df_das_changes["difference"] = (
+    #         df_das_changes["das_start"] - df_das_changes["das_opt"]
+    #     )
+    #     das_home = np.mean(
+    #         df_das_changes[df_das_changes["def_team"] == "home"]["difference"]
+    #     )
+    #     das_away = np.mean(
+    #         df_das_changes[df_das_changes["def_team"] == "away"]["difference"]
+    #     )
+    #     st.dataframe(df_das_changes)
+    #     st.write(f"DAS Mean Heim Team = {das_home} | DAS Mean Away Team = {das_away}")
+    #     st.write(
+    #         f"Optimierung von {len(frame_list)} in {time.time() - start_time:.2f} Sekunden"
+    #     )
+    # -----------------------------------------------------------
     # Match Plotting
-    plot_frame(match, frame, pitch_result, das_frame_index, df_pre_frame)
 
-    optimize_def.get_highest_dangerous_values(
-        pitch_result, df_pre_frame, df_tracking, frame, das_frame_index, match
-    )
-
-    # optimize_def.get_highest_dangerous_values_manually(
-    #     pitch_result, df_pre_frame, df_tracking, frame, das_frame_index, match
+    # fig, ax = defensive_das.plot_frame(
+    #     match_optimized, frame, pitch_result_optimized, input_index, df_pre_frame
     # )
+    # st.pyplot(fig)
+    # st.dataframe(match.tracking_data[match.tracking_data["frame"] == 105059])
+    # fig, ax = plt.subplots(figsize=(10, 6))
+    # fig, ax = plot_soccer_pitch(fig=fig, ax=ax, field_dimen=match.pitch_dimensions)
+    # fig, ax = plot_tracking_data(
+    #     match,
+    #     105059,
+    #     fig=fig,
+    #     ax=ax,
+    #     team_colors=["blue", "red"],
+    # )
+    # st.pyplot(fig)
 
 
 if __name__ == "__main__":
