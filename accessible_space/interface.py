@@ -14,11 +14,11 @@ from .core import _DEFAULT_PASS_START_LOCATION_OFFSET, _DEFAULT_B0, _DEFAULT_TIM
     _DEFAULT_KEEP_INERTIAL_VELOCITY, _DEFAULT_INERTIAL_SECONDS, _DEFAULT_TOL_DISTANCE, _DEFAULT_RADIAL_GRIDSIZE, \
     _DEFAULT_V0_PROB_AGGREGATION_MODE, _DEFAULT_NORMALIZE, _DEFAULT_USE_EFFICIENT_SIGMOID, \
     simulate_passes_chunked, clip_simulation_result_to_pitch, integrate_surfaces, SimulationResult
-from .utility import get_unused_column_name, _dist_to_opp_goal, _opening_angle_to_goal, _adjust_saturation, _unset, \
+from .utility import get_unused_column_name, _dist_to_opp_goal, _opening_angle_to_goal, _adjust_color, _unset, \
     _replace_column_values_except_nans
 
 
-_DEFAULT_N_FRAMES_AFTER_PASS_FOR_V0 = 5
+_DEFAULT_N_FRAMES_AFTER_PASS_FOR_V0 = 3
 _DEFAULT_FALLBACK_V0 = 10
 _DEFAULT_USE_POSS_FOR_XC = True
 _DEFAULT_USE_FIXED_V0_FOR_XC = True
@@ -1054,10 +1054,9 @@ def plot_expected_completion_surface(simulation_result: SimulationResult, frame_
 
     areas = 10
     levels = np.linspace(start=0, stop=np.max(z)+0.00001, num=areas + 1, endpoint=True)
-    saturations = [x / areas for x in range(areas)]
+    color_intensities = [x / areas for x in range(areas)]
     base_color = matplotlib.colors.to_rgb(color)
-
-    colors = [_adjust_saturation(base_color, s) for s in saturations]
+    colors = [_adjust_color(base_color, lightness=1 - 0.5 * intensity, saturation=1) for intensity in color_intensities]
 
     # Create a triangulation
     triang = matplotlib.tri.Triangulation(x, y)

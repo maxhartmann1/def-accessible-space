@@ -632,7 +632,7 @@ def integrate_surfaces(result: SimulationResult, x_pitch_min=-52.5, x_pitch_max=
     return Areas(**area_data)
 
 
-def as_dangerous_result(result, danger, danger_weight=2):
+def as_dangerous_result(result, danger, danger_weight):
     """
     Convert a simulation result to a dangerous simulation result by multiplying density with danger.
 

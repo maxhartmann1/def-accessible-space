@@ -14,9 +14,7 @@ def _get_metrica_data(
         import xmltodict
         metrica_open_data_base_dir = "https://raw.githubusercontent.com/metrica-sports/sample-data/refs/heads/master/data"
         if dataset_nr in [1, 2]:
-            # df = pd.read_csv(f"C:/Users/Jonas/Desktop/ucloud/Arbeit/Spielanalyse/soccer-analytics/football1234/datasets/metrica/sample-data-master/data/Sample_Game_{dataset_nr}/Sample_Game_{dataset_nr}_RawEventsData.csv")
-            df = pd.read_csv(
-                f"{metrica_open_data_base_dir}/Sample_Game_{dataset_nr}/Sample_Game_{dataset_nr}_RawEventsData.csv")
+            df = pd.read_csv(f"{metrica_open_data_base_dir}/Sample_Game_{dataset_nr}/Sample_Game_{dataset_nr}_RawEventsData.csv")
             df["body_part_type"] = df["Subtype"].where(df["Subtype"].isin(["HEAD"]), None)
             df["set_piece_type"] = df["Subtype"].where(
                 df["Subtype"].isin(["THROW IN", "GOAL KICK", "FREE KICK", "CORNER KICK"]), None).map(
@@ -81,13 +79,6 @@ def _get_metrica_data(
 
             return df.drop(columns=["tmp_next_player", "tmp_next_team", "tmp_receiver_player", "tmp_receiver_team"])
         else:
-            # dataset = kloppy.metrica.load_event(
-            #     event_data="C:/Users/Jonas/Desktop/ucloud/Arbeit/Spielanalyse/soccer-analytics/football1234/datasets/metrica/sample-data-master/data/Sample_Game_3/Sample_Game_3_events.json",
-            #     # meta_data="https://raw.githubusercontent.com/metrica-sports/sample-data/refs/heads/master/data/Sample_Game_3/Sample_Game_3_metadata.xml",
-            #     meta_data="C:/Users/Jonas/Desktop/ucloud/Arbeit/Spielanalyse/soccer-analytics/football1234/datasets/metrica/sample-data-master/data/Sample_Game_3/Sample_Game_3_metadata.xml",
-            #     coordinates="secondspectrum",
-            # )
-            # json_data = json.load(open("C:/Users/Jonas/Desktop/ucloud/Arbeit/Spielanalyse/soccer-analytics/football1234/datasets/metrica/sample-data-master/data/Sample_Game_3/Sample_Game_3_events.json"))
             # json_data = json.loads(open(f"{metrica_open_data_base_dir}/Sample_Game_3/Sample_Game_3_events.json"))
             import requests
             json_data = requests.get(f"{metrica_open_data_base_dir}/Sample_Game_3/Sample_Game_3_events.json").json()

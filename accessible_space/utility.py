@@ -115,12 +115,14 @@ def _opening_angle_to_goal(x, y):
                                 np.array([x_goal - x, -SEMI_GOAL_WIDTH_CENTER - y])))
 
 
-def _adjust_saturation(color, saturation):
+def _adjust_color(color, saturation, lightness=None):
     """
-    >>> _adjust_saturation((0.5, 0.5, 0.5), 0.5)
+    >>> _adjust_color((0.5, 0.5, 0.5), saturation=0.5)
     (0.75, 0.25, 0.25)
     """
     h, l, s = colorsys.rgb_to_hls(*color)
+    if lightness is not None:
+        l = lightness
     return colorsys.hls_to_rgb(h, l, saturation)
 
 
