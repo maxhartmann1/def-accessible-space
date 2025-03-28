@@ -135,8 +135,6 @@ def _get_matrix_coordinates(
     """
     if controlling_team_col not in df_tracking.columns:
         raise KeyError(f"Tracking data does not contain column '{controlling_team_col}'")
-    if not set(df_tracking[team_col].unique()).issubset(set(df_tracking[team_col].unique())):
-        raise ValueError(f"Tracking data contains teams that are not present in the controlling team column (team_col={team_col}, controlling_team_col{controlling_team_col})")
 
     df_tracking = df_tracking.sort_values(by=[frame_col, team_col])
 
@@ -155,9 +153,15 @@ def _get_matrix_coordinates(
     if df_tracking.loc[i_player].set_index([frame_col, player_col]).index.duplicated().any():
         raise ValueError(f"Tracking data contains duplicate pairs frame_col='{frame_col}' and player_col='{player_col}'.")
 
+    all_frames = df_tracking[frame_col].unique()
+    df_tracking[frame_col] = pd.Categorical(df_tracking[frame_col], categories=all_frames, ordered=True)
     df_players = df_tracking.loc[i_player].pivot(
         index=frame_col, columns=player_col, values=[x_col, y_col, vx_col, vy_col]
     )
+    if len(all_frames) != len(df_players.index):
+        warnings.warn(f"Player positions are missing in some frames.")
+    df_players = df_players.reindex(all_frames, fill_value=np.nan)
+
     F = df_players.shape[0]  # number of frames
     C = 4  # number of coordinates per player
     P = df_tracking.loc[i_player, player_col].nunique()  # number of players
@@ -181,6 +185,9 @@ def _get_matrix_coordinates(
     player_teams = player2team.loc[players].values
 
     df_ball = df_tracking.loc[~i_player].set_index(frame_col)[[x_col, y_col, vx_col, vy_col]]
+    if len(all_frames) != len(df_ball.index):
+        warnings.warn(f"Ball position is missing in some frames.")
+    df_ball = df_ball.reindex(all_frames)
     BALL_POS = df_ball.values  # F x C
 
     controlling_teams = df_tracking.groupby(frame_col)[controlling_team_col].first().values

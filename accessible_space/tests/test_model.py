@@ -111,6 +111,39 @@ def _get_double_butterfly_data():
     return df_tracking
 
 
+def _get_data_no_common_frames_in_event_and_tracking():
+    df_tracking = pd.DataFrame({
+        "frame_id": [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        "player_id": ["a", "b", "ball", "a", "b", "c", "a", "c", "ball"],
+        "team_id": ["H", "A", None, "H", "A", "H", "H", "H", None],
+        "x": [0, -50, -10, 50, 10, 0, 45, 55, 10],
+        "y": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "vx": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "vy": [0, 0, 0, 0, 0, 0, 0, 0 ,0],
+        "player_color": ["red", "blue", "black", "red", "blue", "red", "red", "red", "black"],
+        "team_in_possession": ["H"] * 9,
+        "player_in_possession": ["a"] * 9,
+    })
+    df_passes = pd.DataFrame({
+        "frame_id": [0, 1, 2],
+        "player_id": ["a", "a", "a"],
+        "team_id": ["H", "H", "H"],
+        "x": [0, 0, 0],
+        "y": [0, 0, 0],
+        "x_target": [-50, -50, -50],
+        "y_target": [0, 0, 0],
+        "v0": [15, 15, 15],
+    })
+    return df_passes, None, df_tracking
+
+
+def test_missing_ball_frames():  # it is not tested whether this results in valid results
+    df_passes, _, df_tracking = _get_data_no_common_frames_in_event_and_tracking()
+    with pytest.warns(UserWarning, match="Ball position is missing"):
+        ret = accessible_space.get_expected_pass_completion(df_passes, df_tracking)
+    df_passes["xc"] = ret.xc
+
+
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
 def test_non_matching_teams(_get_data):
     df_pass_safe, df_pass_risky, df_tracking = _get_data()

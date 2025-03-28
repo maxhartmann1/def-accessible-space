@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/github/license/jonas-bischofberger/accessible-space)
 ![Python Versions](https://img.shields.io/badge/Python-%3E=3.7-blue)
 
-This package delivers a provider-agnostic, easy-to-use and production-ready implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics. By physically simulating passes across the pitch, DAS quantifies dangerous areas that a team can access by a pass, enabling rich insights into passing, off-ball attacking and defending behaviour and spatial dynamics.
+This package is a provider-agnostic, easy-to-use and production-ready implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics. Based on physical pass simulations across the pitch, DAS quantifies dangerous areas that a team can access by a pass, enabling rich insights into passing, off-ball attacking and defending behaviour, and spatial team dynamics.
 
 ### Install package 
 
@@ -26,6 +26,19 @@ To obtain these metrics, you only need to pass your dataframes and the schema of
 import accessible_space
 from accessible_space.tests.resources import df_passes, df_tracking  # Example data
 import matplotlib.pyplot as plt
+
+print(df_passes[["frame_id", "player_id", "team_id", "x", "y", "x_target", "y_target", "pass_outcome", "target_frame_id"]])
+#    frame_id player_id team_id     x     y  x_target  y_target  pass_outcome  target_frame_id
+# 0         0         A    Home  -0.1   0.0        20        30             1                6
+# 1         6         B    Home  25.0  30.0        15        30             0                9
+# 2        14         C    Home -13.8  40.1        49        -1             0               16
+print(df_tracking[["period_id", "frame_id", "player_id", "team_id", "team_in_possession", "x", "y", "vx", "vy"]])
+#      period_id  frame_id player_id team_id team_in_possession    x     y   vx    vy
+# 0            0         0         A    Home               Home -0.1  0.00  0.1  0.05
+# 1            0         1         A    Home               Home  0.0  0.05  0.1  0.05
+# ..         ...       ...       ...     ...                ...  ...   ...  ...   ...
+# 117          0        18      ball    None               Away  2.8  0.00  0.1  0.00
+# 118          0        19      ball    None               Away  2.9  0.00  0.1  0.00
 
 ### Example 1. Add expected completion rate to passes
 pass_result = accessible_space.get_expected_pass_completion(df_passes, df_tracking, event_frame_col="frame_id", event_player_col="player_id", event_team_col="team_id", event_start_x_col="x", event_start_y_col="y", event_end_x_col="x_target", event_end_y_col="y_target", tracking_frame_col="frame_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_team_in_possession_col="team_in_possession", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", ball_tracking_player_id="ball")
@@ -100,7 +113,7 @@ for _, row in df_tracking[(df_tracking["frame_id"] == 0) & (df_tracking["player_
     accessible_space.plot_expected_completion_surface(individual_result.dangerous_result, frame_index=frame_index, attribute="player_poss_density", player_index=int(row["player_index"]), color="red")
     plt.title(f"{row['player_id']} ({'attacker' if is_attacker else 'defender'}) {row['player_AS']:.0f}m² AS and {row['player_DAS']:.2f} m² DAS.")
     plt.show()
-    # Note: Individual space is not exclusive within a team. This is intentional because your team mates do not take away space from you in the competitive way that your opponents do.
+    # Note: Individual space is not exclusive within a team. This is intentional because your team mates do not take away space from you.
     print(f"Player {row['player_id']} ({'attacker' if is_attacker else 'defender'}) controls {row['player_AS']:.0f}m² AS and {row['player_DAS']:.2f} m² DAS.")
 ```
 
