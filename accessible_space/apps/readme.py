@@ -3,6 +3,7 @@ import subprocess
 import sys
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import streamlit as st
 
 import accessible_space
@@ -15,9 +16,19 @@ def readme_dashboard():
     st.write("#### Prepare example data")
     st.code("""from accessible_space.tests.resources import df_passes, df_tracking  # Example data""", language="python")
     st.write("df_passes")
-    st.write(df_passes)
+    st.write(df_passes[["frame_id", "player_id", "team_id", "x", "y", "x_target", "y_target", "pass_outcome", "target_frame_id"]])
+    #    frame_id  target_frame_id player_id receiver_id team_id     x     y  x_target  y_target  pass_outcome receiver_team_id         event_string
+    # 0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)
+    # 1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0)
+    # 2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0)
     st.write("df_tracking")
-    st.write(df_tracking)
+    st.write(df_tracking[["period_id", "frame_id", "player_id", "team_id", "team_in_possession", "x", "y", "vx", "vy"]])
+    #      period_id  frame_id player_id team_id team_in_possession    x     y   vx    vy
+    # 0            0         0         A    Home               Home -0.1  0.00  0.1  0.05
+    # 1            0         1         A    Home               Home  0.0  0.05  0.1  0.05
+    # ..         ...       ...       ...     ...                ...  ...   ...  ...   ...
+    # 117          0        18      ball    None               Away  2.8  0.00  0.1  0.00
+    # 118          0        19      ball    None               Away  2.9  0.00  0.1  0.00
 
     ### 1. Add expected completion to passes
     st.write("#### 1. Add expected completion to passes")

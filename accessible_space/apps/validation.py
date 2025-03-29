@@ -752,19 +752,19 @@ def calibration_histogram(df, hist_col="xc", synth_col="is_synthetic", n_bins=No
 # st.stop()
 
 
-def get_bins(df, prediction_col, outcome_col, bin_col, n_bins, binsize):
+def get_bins(df, prediction_col="xc", outcome_col="success", new_bin_col="bin", n_bins=None, binsize=None):
     if binsize is None and n_bins is not None:
-        df[bin_col] = pd.qcut(df[prediction_col], n_bins, labels=False, duplicates="drop")
+        df[new_bin_col] = pd.qcut(df[prediction_col], n_bins, labels=False, duplicates="drop")
     elif binsize is not None and n_bins is None:
         min_val = df[prediction_col].min()
         max_val = df[prediction_col].max()
         bin_edges = [min_val + i * binsize for i in range(int((max_val - min_val) / binsize) + 2)]
-        df[bin_col] = pd.cut(df[prediction_col], bins=bin_edges, labels=False, include_lowest=True)
+        df[new_bin_col] = pd.cut(df[prediction_col], bins=bin_edges, labels=False, include_lowest=True)
     else:
         raise ValueError("Either n_bins or binsize must be specified")
 
-    df_calibration = df.groupby(bin_col).agg({outcome_col: "mean", prediction_col: "mean"}).reset_index()
-    df_calibration[bin_col] = df_calibration[bin_col]
+    df_calibration = df.groupby(new_bin_col).agg({outcome_col: "mean", prediction_col: "mean"}).reset_index()
+    df_calibration[new_bin_col] = df_calibration[new_bin_col]
     return df_calibration
 
 

@@ -16,3 +16,5 @@ build
 twine
 setuptools
 tox
+netcal
+mplsoccer

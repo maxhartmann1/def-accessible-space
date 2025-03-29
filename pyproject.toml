@@ -1,6 +1,6 @@
 [project]
 name = "accessible_space"
-version = "1.0.6"
+version = "1.0.7"
 authors = [
   {name="Jonas Bischofberger", email="jonas.bischofberger@univie.ac.at"},
 ]
@@ -37,6 +37,8 @@ full = [
     "streamlit",
     "wfork-streamlit-profiler",
     "brokenaxes",
+    "netcal",
+    "mplsoccer",
 ]
 
 dev = [
@@ -47,6 +49,8 @@ dev = [
     "streamlit",
     "wfork-streamlit-profiler",
     "brokenaxes",
+    "netcal",
+    "mplsoccer",
 
     "pytest",
     "pytest-cov",

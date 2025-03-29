@@ -13,7 +13,7 @@ def test_readme_dashboard():
 
 
 def test_validation_dashboard():
-    accessible_space.apps.validation.main(run_as_streamlit_app=False, dummy=True)
+    accessible_space.apps.validation.main(run_as_streamlit_app=False, dummy=False)
 
 
 def test_qualitative_profiling_dashboard():
