@@ -39,6 +39,7 @@ full = [
     "brokenaxes",
     "netcal",
     "mplsoccer",
+    "databallpy",
 ]
 
 dev = [
@@ -51,6 +52,7 @@ dev = [
     "brokenaxes",
     "netcal",
     "mplsoccer",
+    "databallpy",
 
     "pytest",
     "pytest-cov",
