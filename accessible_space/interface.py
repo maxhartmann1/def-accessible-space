@@ -98,9 +98,10 @@ def _check_ball_in_tracking_data(df_tracking, tracking_player_col, ball_tracking
         raise ValueError(f"Ball flag ball_tracking_player_id='{ball_tracking_player_id}' does not exist in column df_tracking['{tracking_player_col}']. Make sure to pass the correct identifier of the ball with the parameter 'ball_tracking_player_id'")
 
 
-def _get_matrix_coordinates(
+def transform_into_arrays(
     df_tracking, frame_col="frame_id", player_col="player_id", ball_player_id="ball", team_col="team_id",
-    controlling_team_col="team_in_possession", x_col="x", y_col="y", vx_col="vx", vy_col="vy"
+    controlling_team_col="team_in_possession", x_col="x", y_col="y", vx_col="vx", vy_col="vy",
+    ignore_ball_position=False
 ):
     """
     Convert tracking data from a DataFrame to numpy matrices as used within this package to compute the passing model.
@@ -114,7 +115,7 @@ def _get_matrix_coordinates(
     3         6         B       A                  H  4.0   8.0  12.0  16.0
     4         5      ball    None                  H  5.0   9.0  13.0  17.0
     5         6      ball    None                  H  6.0  10.0  14.0  18.0
-    >>> PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = _get_matrix_coordinates(df_tracking)
+    >>> PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = transform_into_arrays(df_tracking)
     >>> PLAYER_POS, PLAYER_POS.shape  # F x P x C
     (array([[[ 1.,  5.,  9., 13.],
             [ 2.,  6., 10., 14.]],
@@ -140,6 +141,19 @@ def _get_matrix_coordinates(
 
     i_player = df_tracking[player_col] != ball_player_id
 
+    # Consider only frames where both player and ball are present
+    ball_frames = df_tracking.loc[~i_player, frame_col].unique()
+    player_frames = df_tracking.loc[i_player, frame_col].unique()
+    if ignore_ball_position:
+        frames_to_consider = set(player_frames)
+    else:
+        frames_to_consider = set(ball_frames).intersection(player_frames)
+        if len(frames_to_consider) < len(ball_frames):
+            warnings.warn(f"Player positions are missing. Shared frames: {len(frames_to_consider)}. Player frames: {len(player_frames)}. Ball frames: {len(ball_frames)}")
+        if len(frames_to_consider) < len(player_frames):
+            warnings.warn(f"Ball positions are missing. Shared frames: {len(frames_to_consider)}. Player frames: {len(player_frames)}. Ball frames: {len(ball_frames)}")
+    df_tracking = df_tracking[df_tracking[frame_col].isin(frames_to_consider)]
+
     duplicate_index = df_tracking.loc[i_player].set_index([frame_col, player_col]).index.duplicated(keep=False)
     if duplicate_index.sum() > 0:
         df_tracking = df_tracking.drop_duplicates(subset=[frame_col, player_col], keep="first")
@@ -153,17 +167,19 @@ def _get_matrix_coordinates(
     if df_tracking.loc[i_player].set_index([frame_col, player_col]).index.duplicated().any():
         raise ValueError(f"Tracking data contains duplicate pairs frame_col='{frame_col}' and player_col='{player_col}'.")
 
+    coordinates = [col for col in [x_col, y_col, vx_col, vy_col] if col in df_tracking.columns]
+
     all_frames = df_tracking[frame_col].unique()
     df_tracking[frame_col] = pd.Categorical(df_tracking[frame_col], categories=all_frames, ordered=True)
     df_players = df_tracking.loc[i_player].pivot(
-        index=frame_col, columns=player_col, values=[x_col, y_col, vx_col, vy_col]
+        index=frame_col, columns=player_col, values=coordinates
     )
     if len(all_frames) != len(df_players.index):
         warnings.warn(f"Player positions are missing in some frames.")
     df_players = df_players.reindex(all_frames, fill_value=np.nan)
 
     F = df_players.shape[0]  # number of frames
-    C = 4  # number of coordinates per player
+    C = len(coordinates)  # number of coordinates per player
     P = df_tracking.loc[i_player, player_col].nunique()  # number of players
 
     if "future_stack" in inspect.signature(df_players.stack).parameters:
@@ -184,22 +200,24 @@ def _get_matrix_coordinates(
     player2team = df_tracking.loc[i_player, [player_col, team_col]].drop_duplicates().set_index(player_col)[team_col]
     player_teams = player2team.loc[players].values
 
-    df_ball = df_tracking.loc[~i_player].set_index(frame_col)[[x_col, y_col, vx_col, vy_col]]
-    if len(all_frames) != len(df_ball.index):
-        warnings.warn(f"Ball position is missing in some frames.")
-    df_ball = df_ball.reindex(all_frames)
-    BALL_POS = df_ball.values  # F x C
+    if not ignore_ball_position:
+        df_ball = df_tracking.loc[~i_player].set_index(frame_col)[coordinates]
+        BALL_POS = df_ball.values  # F x C
+    else:
+        BALL_POS = None
 
     controlling_teams = df_tracking.groupby(frame_col)[controlling_team_col].first().values
 
     F = PLAYER_POS.shape[0]
-    assert F == BALL_POS.shape[0]
+    if not ignore_ball_position and F != BALL_POS.shape[0]:
+        warnings.warn(f"Number of frames in tracking data for players ({F}) does not match number of frames in tracking data for the ball ({BALL_POS.shape[0]}).")
     assert F == controlling_teams.shape[0], f"Dimension F is {F} (from PLAYER_POS: {PLAYER_POS.shape}), but passer_team shape is {controlling_teams.shape}"
     P = PLAYER_POS.shape[1]
     assert P == player_teams.shape[0]
     assert P == players.shape[0]
     assert PLAYER_POS.shape[2] >= 4  # >= or = ?
-    assert BALL_POS.shape[1] >= 2  # ...
+    if not ignore_ball_position:
+        assert BALL_POS.shape[1] >= 2  # ...
 
     return PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index
 
@@ -615,7 +633,7 @@ def get_expected_pass_completion(
         df_tracking_passes[tracking_team_in_possession_col] = None
         df_tracking_passes = _replace_column_values_except_nans(df_tracking_passes, tracking_frame_col, tracking_team_in_possession_col, df_passes, event_frame_col, event_team_col)
 
-    PLAYER_POS, BALL_POS, players, player_teams, _, unique_frame_to_index, player_to_index = _get_matrix_coordinates(
+    PLAYER_POS, BALL_POS, players, player_teams, _, unique_frame_to_index, player_to_index = transform_into_arrays(
         df_tracking_passes, frame_col=unique_frame_col, player_col=tracking_player_col,
         ball_player_id=ball_tracking_player_id, team_col=tracking_team_col, x_col=tracking_x_col, y_col=tracking_y_col,
         vx_col=tracking_vx_col, vy_col=tracking_vy_col, controlling_team_col=tracking_team_in_possession_col,
@@ -804,7 +822,7 @@ def get_dangerous_accessible_space(
 
     df_tracking = df_tracking.copy()
 
-    PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = _get_matrix_coordinates(
+    PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = transform_into_arrays(
         df_tracking, frame_col=frame_col, player_col=player_col,
         ball_player_id=ball_player_id, team_col=team_col, x_col=x_col, y_col=y_col,
         vx_col=vx_col, vy_col=vy_col, controlling_team_col=team_in_possession_col,
