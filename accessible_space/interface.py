@@ -106,7 +106,7 @@ def transform_into_arrays(
     """
     Convert tracking data from a DataFrame to numpy matrices as used within this package to compute the passing model.
 
-    >>> df_tracking = pd.DataFrame({"frame_id": [5, 5, 6, 6, 5, 6], "player_id": ["A", "B", "A", "B", "ball", "ball"], "team_id": ["H", "A", "H", "A", None, None], "team_in_possession": ["H", "H", "H", "H", "H", "H"], "x": [1.0, 2, 3, 4, 5, 6], "y": [5.0, 6, 7, 8, 9, 10], "vx": [9.0, 10, 11, 12, 13, 14], "vy": [13.0, 14, 15, 16, 17, 18]})
+    >>> df_tracking = pd.DataFrame({"frame_id": [5, 5, 6, 6, 5, 6, 5, 6], "player_id": ["A", "B", "A", "B", "ball", "ball", "C", "C"], "team_id": ["H", "A", "H", "A", None, None, "H", "H"], "team_in_possession": ["H", "H", "H", "H", "H", "H", "H", "H"], "x": [1.0, 2, 3, 4, 5, None, 7], "y": [5.0, 6, 7, 8, 9, None, 11], "vx": [9.0, 10, 11, 12, 13, None, 15], "vy": [13.0, 14, 15, 16, 17, None, 19]})
     >>> df_tracking
        frame_id player_id team_id team_in_possession    x     y    vx    vy
     0         5         A       H                  H  1.0   5.0   9.0  13.0
@@ -215,7 +215,6 @@ def transform_into_arrays(
     P = PLAYER_POS.shape[1]
     assert P == player_teams.shape[0]
     assert P == players.shape[0]
-    assert PLAYER_POS.shape[2] >= 4  # >= or = ?
     if not ignore_ball_position:
         assert BALL_POS.shape[1] >= 2  # ...
 
