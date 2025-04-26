@@ -206,7 +206,7 @@ def transform_into_arrays(
     else:
         BALL_POS = None
 
-    controlling_teams = df_tracking.groupby(frame_col)[controlling_team_col].first().values
+    controlling_teams = df_tracking.groupby(frame_col, observed=False)[controlling_team_col].first().values
 
     F = PLAYER_POS.shape[0]
     if not ignore_ball_position and F != BALL_POS.shape[0]:
