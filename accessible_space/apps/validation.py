@@ -1524,7 +1524,7 @@ def validation_dashboard(dummy=False, run_asserts=False):
     np.random.seed(SEED)
     random.seed(343431)
 
-    validate_das = st.toggle("Validate DAS", value=False)
+    do_das = st.toggle("Validate DAS", value=False)
 
     dfs_tracking, dfs_event = get_metrica_data(dummy=dummy)
 
@@ -1568,7 +1568,7 @@ def validation_dashboard(dummy=False, run_asserts=False):
             plot_pass(p4ss, df_tracking)
 
 
-    if validate_das:
+    if do_das:
         df_passes, target_density_success, target_density_fail = validate_das(dfs_tracking, dfs_passes)
         if run_asserts:
             assert round(target_density_fail, 3) == 0.427
