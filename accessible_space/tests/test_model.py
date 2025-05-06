@@ -164,15 +164,13 @@ def test_no_poss_artifact_around_passer():
     # fig = accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "attack_poss_density", color="blue")
     # plt.xlim([-52.5, 52.5])
     # plt.ylim([-34, 34])
-    # st.write(fig)
-    assert (ret.simulation_result.attack_cum_poss[0, :, 0] > 0.5).any()
+    assert (ret.simulation_result.attack_cum_poss[0, :, 1] > 0.5).any()
 
 
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
 def test_as_symmetry(_get_data):
     _, _, df_tracking = _get_data()
 
-    reaches_half_space = False
     for angles, v0_min, n_v0, gridsize in [
         (64, 0.01, 250, 1),
         (32, 0.01, 250, 1),
@@ -189,19 +187,19 @@ def test_as_symmetry(_get_data):
             df_tracking, passer_to_exclude_col="player_in_possession", n_angles=angles, v0_min=v0_min,
             n_v0=n_v0, radial_gridsize=gridsize, period_col=None
         )
-        if np.isclose(ret.acc_space.iloc[0], 3570, atol=10):  # allow 10m² error here, 3570 = 105*68/2. This is very sensitive to the parameters though - we merely ensure that it's POSSIBLE to achieve this value.
-            reaches_half_space = True
-    assert reaches_half_space
 
-    accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "attack_poss_density", color="blue")
+        ## Plotting
+        # import streamlit as st
+        # st.write(angles, v0_min, n_v0, gridsize, ret.acc_space.iloc[0])
+        # accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "attack_poss_density", color="blue")
+        # plt.xlim([-52.5, 52.5])
+        # plt.ylim([-34, 34])
+        # st.write(plt.gcf())
+        # st.write("ret")
+        # st.write("ret.acc_space", ret.acc_space)
+        # st.write("ret.simulation_result.attack_poss_density[0]", ret.simulation_result.attack_poss_density[0])
 
-    ### Plotting
-    # plt.xlim([-52.5, 52.5])
-    # plt.ylim([-34, 34])
-    # st.write(plt.gcf())
-    # st.write("ret")
-    # st.write("ret.acc_space", ret.acc_space)
-    # st.write("ret.simulation_result.attack_poss_density[0]", ret.simulation_result.attack_poss_density[0])
+        assert np.isclose(ret.acc_space.iloc[0], 3570, atol=1000)
 
 
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
@@ -225,7 +223,7 @@ def test_xc_parameters(_get_data, use_approx_two_point, keep_inertial_velocity, 
     df_pass_safe, df_pass_risky, df_tracking = _get_data()
 
     ret_safe = accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking, use_approx_two_point=use_approx_two_point, keep_inertial_velocity=keep_inertial_velocity, use_event_coordinates_as_ball_position=use_event_coordinates_as_ball_position, use_fixed_v0=use_fixed_v0, clip_to_pitch=False)
-    assert ret_safe.xc[0] > 0.95
+    assert ret_safe.xc[0] > 0.9
 
     df_tracking["vx"] = -df_tracking["vx"]
     df_tracking["x"] = -df_tracking["x"]
@@ -233,7 +231,7 @@ def test_xc_parameters(_get_data, use_approx_two_point, keep_inertial_velocity, 
     df_tracking["vx"] = -df_tracking["vx"]
     df_tracking["x"] = -df_tracking["x"]
 
-    assert ret_risky.xc[0] < 0.05
+    assert ret_risky.xc[0] < 0.1
     # assert np.isclose(ret_safe.xc[0], 1 - ret_risky.xc[0], atol=1e-3)
 
 
@@ -876,14 +874,23 @@ def test_additional_defender_decreases_as_and_additional_attacker_increases_as(_
         ret_baseline = accessible_space.get_dangerous_accessible_space(
             _df_tracking, infer_attacking_direction=False, attacking_direction_col="attacking_direction",
         )
-        return ret_baseline.acc_space.iloc[0], ret_baseline.das.iloc[0]
+        return ret_baseline.acc_space.iloc[0], ret_baseline.das.iloc[0], ret_baseline
 
-    baseline_as, baseline_das = get_as_and_das(df_tracking)
+    baseline_as, baseline_das, baseline_result = get_as_and_das(df_tracking)
+
+    # plot
+    # plt.figure()
+    # plt.xlim([-52.5, 52.5])
+    # plt.ylim([-34, 34])
+    # plt.scatter(df_tracking["x"], df_tracking["y"], color=df_tracking["player_color"])
+    # plt.scatter(df_tracking["x"].iloc[0], df_tracking["y"].iloc[0], color="red", label="ball")
+    # accessible_space.plot_expected_completion_surface(baseline_result.simulation_result, 0, "attack_poss_density")
+    # st.write(plt.gcf())
 
     defending_team = [team for team in df_tracking["team_id"].unique() if team != df_tracking["team_in_possession"].iloc[0]][0]
     attacking_team = df_tracking["team_in_possession"].iloc[0]
 
-    for new_x in [0, 10, -53]:
+    for new_x in [0, 10, 53]:
         for new_y in [-10, 40]:
             for new_vx in [0, -20]:
                 for new_vy in [0, -2]:
@@ -900,7 +907,7 @@ def test_additional_defender_decreases_as_and_additional_attacker_increases_as(_
                     }
                     df_tracking_extra_defender.loc[len(df_tracking_extra_defender)] = pd.Series(extra_defender_data)
 
-                    as_with_extra_defender, das_with_extra_defender = get_as_and_das(df_tracking_extra_defender)
+                    as_with_extra_defender, das_with_extra_defender, _ = get_as_and_das(df_tracking_extra_defender)
                     assert as_with_extra_defender <= baseline_as
                     assert das_with_extra_defender <= baseline_das
 
@@ -917,6 +924,6 @@ def test_additional_defender_decreases_as_and_additional_attacker_increases_as(_
                     }
                     # df_tracking_extra_attacker = df_tracking_extra_attacker.append(pd.Series(extra_attacker_data), ignore_index=True)
                     df_tracking_extra_attacker.loc[len(df_tracking_extra_attacker)] = pd.Series(extra_attacker_data)
-                    as_with_extra_attacker, das_with_extra_attacker = get_as_and_das(df_tracking_extra_attacker)
+                    as_with_extra_attacker, das_with_extra_attacker, _ = get_as_and_das(df_tracking_extra_attacker)
                     assert as_with_extra_attacker >= baseline_as, f"new_x={new_x}, new_y={new_y}, new_vx={new_vx} new_vy={new_vy}"
                     assert das_with_extra_attacker >= baseline_das

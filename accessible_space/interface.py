@@ -1,6 +1,6 @@
 import collections
-import warnings
 import inspect
+import warnings
 
 import matplotlib.colors
 import matplotlib.pyplot as plt
@@ -12,42 +12,46 @@ from . import as_dangerous_result
 from .core import _DEFAULT_PASS_START_LOCATION_OFFSET, _DEFAULT_B0, _DEFAULT_TIME_OFFSET_BALL, _DEFAULT_A_MAX, \
     _DEFAULT_USE_MAX, _DEFAULT_USE_APPROX_TWO_POINT, _DEFAULT_B1, _DEFAULT_PLAYER_VELOCITY, _DEFAULT_V_MAX, \
     _DEFAULT_KEEP_INERTIAL_VELOCITY, _DEFAULT_INERTIAL_SECONDS, _DEFAULT_TOL_DISTANCE, _DEFAULT_RADIAL_GRIDSIZE, \
-    _DEFAULT_V0_PROB_AGGREGATION_MODE, _DEFAULT_NORMALIZE, _DEFAULT_USE_EFFICIENT_SIGMOID, \
-    simulate_passes_chunked, clip_simulation_result_to_pitch, integrate_surfaces, SimulationResult
+    _DEFAULT_V0_PROB_AGGREGATION_MODE, _DEFAULT_NORMALIZE, _DEFAULT_USE_EFFICIENT_SIGMOID, _DEFAULT_FACTOR, \
+    _DEFAULT_FACTOR2, simulate_passes_chunked, clip_simulation_result_to_pitch, integrate_surfaces, SimulationResult
 from .utility import get_unused_column_name, _dist_to_opp_goal, _opening_angle_to_goal, _adjust_color, _unset, \
     _replace_column_values_except_nans
-
 
 _DEFAULT_N_FRAMES_AFTER_PASS_FOR_V0 = 3
 _DEFAULT_FALLBACK_V0 = 10
 _DEFAULT_USE_POSS_FOR_XC = True
 _DEFAULT_USE_FIXED_V0_FOR_XC = True
-_DEFAULT_V0_MAX_FOR_XC = 26.574734241456405
-_DEFAULT_V0_MIN_FOR_XC = 12.008983050682373
-_DEFAULT_N_V0_FOR_XC = 12.247054481867808
+_DEFAULT_V0_MAX_FOR_XC = 42.18118275402132
+_DEFAULT_V0_MIN_FOR_XC = 8.886015553615485
+_DEFAULT_N_V0_FOR_XC = 13.751097117532021
 
-_DEFAULT_B0_FOR_DAS = 5
+# Adjust some DAS parameters to allow inclusion of the passer (pass as a "quasi-carry") and reduce high pass hedging
+_DEFAULT_B0_FOR_DAS = _DEFAULT_B0
 _DEFAULT_B1_FOR_DAS = -1000
 _DEFAULT_PASS_START_LOCATION_OFFSET_FOR_DAS = 0
-_DEFAULT_TIME_OFFSET_BALL_FOR_DAS = 0.1
-_DEFAULT_TOL_DISTANCE_FOR_DAS = 2.5714050933456036
-_DEFAULT_PLAYER_VELOCITY_FOR_DAS = 9.984451038279267
-_DEFAULT_KEEP_INERTIAL_VELOCITY_FOR_DAS = True
-_DEFAULT_A_MAX_FOR_DAS = 14.256003027575932
-_DEFAULT_V_MAX_FOR_DAS = 12.865546440947865
-_DEFAULT_USE_MAX_FOR_DAS = False
-_DEFAULT_USE_APPROX_TWO_POINT_FOR_DAS = True
-_DEFAULT_INERTIAL_SECONDS_FOR_DAS = 0.6164609802178712
-_DEFAULT_RADIAL_GRIDSIZE_FOR_DAS = 3
-_DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS = "max"
+_DEFAULT_TIME_OFFSET_BALL_FOR_DAS = 0
+_DEFAULT_TOL_DISTANCE_FOR_DAS = _DEFAULT_TOL_DISTANCE
+_DEFAULT_PLAYER_VELOCITY_FOR_DAS = 6.5
+_DEFAULT_KEEP_INERTIAL_VELOCITY_FOR_DAS = _DEFAULT_KEEP_INERTIAL_VELOCITY
+_DEFAULT_A_MAX_FOR_DAS = _DEFAULT_A_MAX
+_DEFAULT_V_MAX_FOR_DAS = _DEFAULT_V_MAX
+_DEFAULT_USE_MAX_FOR_DAS = _DEFAULT_USE_MAX
+_DEFAULT_USE_APPROX_TWO_POINT_FOR_DAS = _DEFAULT_USE_APPROX_TWO_POINT
+_DEFAULT_INERTIAL_SECONDS_FOR_DAS = _DEFAULT_INERTIAL_SECONDS
+_DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS = _DEFAULT_V0_PROB_AGGREGATION_MODE
 _DEFAULT_NORMALIZE_FOR_DAS = True
-_DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS = True
+_DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS = _DEFAULT_USE_EFFICIENT_SIGMOID
+_DEFAULT_FACTOR_FOR_DAS = _DEFAULT_FACTOR
+_DEFAULT_FACTOR2_FOR_DAS = _DEFAULT_FACTOR2
 
-_DEFAULT_N_ANGLES_FOR_DAS = 60
+_DEFAULT_RADIAL_GRIDSIZE_FOR_DAS = 1
+_DEFAULT_N_ANGLES_FOR_DAS = 30
 _DEFAULT_PHI_OFFSET = 0
 _DEFAULT_N_V0_FOR_DAS = 30
 _DEFAULT_V0_MIN_FOR_DAS = 3
-_DEFAULT_V0_MAX_FOR_DAS = 30
+_DEFAULT_V0_MAX_FOR_DAS = 45
+
+_DEFAULT_DANGER_WEIGHT = 2
 
 ReturnValueDASGained = collections.namedtuple("ReturnValueDASGained", [
     "acc_space", "das", "acc_space_reception", "das_reception", "as_gained", "das_gained", "simulation_result",
@@ -106,7 +110,7 @@ def transform_into_arrays(
     """
     Convert tracking data from a DataFrame to numpy matrices as used within this package to compute the passing model.
 
-    >>> df_tracking = pd.DataFrame({"frame_id": [5, 5, 6, 6, 5, 6, 5, 6], "player_id": ["A", "B", "A", "B", "ball", "ball", "C", "C"], "team_id": ["H", "A", "H", "A", None, None, "H", "H"], "team_in_possession": ["H", "H", "H", "H", "H", "H", "H", "H"], "x": [1.0, 2, 3, 4, 5, None, 7], "y": [5.0, 6, 7, 8, 9, None, 11], "vx": [9.0, 10, 11, 12, 13, None, 15], "vy": [13.0, 14, 15, 16, 17, None, 19]})
+    >>> df_tracking = pd.DataFrame({"frame_id": [5, 5, 6, 6, 5, 6], "player_id": ["A", "B", "A", "B", "ball", "ball"], "team_id": ["H", "A", "H", "A", None, None], "team_in_possession": ["H", "H", "H", "H", "H", "H"], "x": [1.0, 2, 3, 4, 5, 6], "y": [5.0, 6, 7, 8, 9, 10], "vx": [9.0, 10, 11, 12, 13, 14], "vy": [13.0, 14, 15, 16, 17, 18]})
     >>> df_tracking
        frame_id player_id team_id team_in_possession    x     y    vx    vy
     0         5         A       H                  H  1.0   5.0   9.0  13.0
@@ -215,6 +219,7 @@ def transform_into_arrays(
     P = PLAYER_POS.shape[1]
     assert P == player_teams.shape[0]
     assert P == players.shape[0]
+    assert PLAYER_POS.shape[2] >= 4  # >= or = ?
     if not ignore_ball_position:
         assert BALL_POS.shape[1] >= 2  # ...
 
@@ -343,7 +348,7 @@ def get_das_gained(
     infer_attacking_direction=True,
     use_event_coordinates_as_ball_position=True,
     use_event_team_as_team_in_possession=True,
-    danger_weight=2,
+    danger_weight=_DEFAULT_DANGER_WEIGHT,
     chunk_size=20,
     return_cropped_result=False,
     use_progress_bar=True,
@@ -372,6 +377,9 @@ def get_das_gained(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS,
     normalize=_DEFAULT_NORMALIZE_FOR_DAS,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS,
+
+    factor=_DEFAULT_FACTOR_FOR_DAS,
+    factor2=_DEFAULT_FACTOR2_FOR_DAS,
 ) -> ReturnValueDASGained:
     """
     >>> pd.set_option("display.max_columns", None)
@@ -387,9 +395,9 @@ def get_das_gained(
     >>> df_passes["AS_Gained"], df_passes["DAS_Gained"], df_passes["fr_index"], simulation_result = result.as_gained, result.das_gained, result.frame_index, result.simulation_result
     >>> df_passes
        frame_id  target_frame_id player_id receiver_id team_id     x     y  x_target  y_target  pass_outcome receiver_team_id         event_string    AS_Gained  DAS_Gained  fr_index
-    0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)   203.407565  117.591519         0
-    1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0) -3172.257169 -155.589097         1
-    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -3394.517672 -125.358147         2
+    0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)   304.900185  103.738390         0
+    1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0) -3390.236469 -163.740452         1
+    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -3434.305806 -127.494528         2
     """
     _check_presence_of_required_columns(df_passes, "df_passes", ["event_success_col", "event_frame_col", "event_target_frame_col"], [event_success_col, event_frame_col, event_target_frame_col])
     _check_presence_of_required_columns(df_tracking, "df_tracking", ["tracking_frame_col", "tracking_x_col", "tracking_y_col", "tracking_player_col", "tracking_team_col"], [tracking_frame_col, tracking_x_col, tracking_y_col, tracking_player_col, tracking_team_col])
@@ -471,6 +479,8 @@ def get_das_gained(
         v0_prob_aggregation_mode=v0_prob_aggregation_mode,
         normalize=normalize,
         use_efficient_sigmoid=use_efficient_sigmoid,
+        factor=factor,
+        factor2=factor2,
     )
     df_tracking_passes_and_receptions["DAS"] = ret.das
     df_tracking_passes_and_receptions["AS"] = ret.acc_space
@@ -563,6 +573,8 @@ def get_expected_pass_completion(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE,
     normalize=_DEFAULT_NORMALIZE,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID,
+    factor=_DEFAULT_FACTOR,
+    factor2=_DEFAULT_FACTOR2,
 ) -> ReturnValueXC:
     """
     Calculate Expected Pass Completion (xC) for the given passes, using the given tracking data.    
@@ -580,11 +592,11 @@ def get_expected_pass_completion(
     >>> df_passes["xC"], df_passes["frame_index"], simulation_result = result.xc, result.event_frame_index, result.simulation_result
     >>> df_passes
        frame_id  target_frame_id player_id receiver_id team_id     x     y  x_target  y_target  pass_outcome receiver_team_id         event_string        xC  frame_index
-    0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)  0.147827            0
-    1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0)  0.935642            1
-    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0)  0.539822            2
+    0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)  0.956717            0
+    1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0)  0.981935            1
+    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0)  0.591103            2
     >>> simulation_result.attack_cum_poss[df_passes["frame_index"].iloc[0], 0, -1]
-    0.1478269829618468
+    0.9567170760117738
     """
     _check_presence_of_required_columns(df_tracking, "df_tracking", column_names=["tracking_x_col", "tracking_y_col", "tracking_vx_col", "tracking_vy_col", "tracking_frame_col", "tracking_team_col", "tracking_player_col"], column_values=[tracking_x_col, tracking_y_col, tracking_vx_col, tracking_vy_col, tracking_frame_col, tracking_team_col, tracking_player_col])
     _check_presence_of_required_columns(df_passes, "df_passes", column_names=["event_frame_col", "event_start_x_col", "event_start_y_col", "event_end_x_col", "event_end_y_col", "event_team_col", "event_player_col"], column_values=[event_frame_col, event_start_x_col, event_start_y_col, event_end_x_col, event_end_y_col, event_team_col, event_player_col])
@@ -695,6 +707,8 @@ def get_expected_pass_completion(
         v0_prob_aggregation_mode=v0_prob_aggregation_mode,
         normalize=normalize,
         use_efficient_sigmoid=use_efficient_sigmoid,
+        factor=factor,
+        factor2=factor2,
 
         chunk_size=chunk_size,
         x_pitch_min=x_pitch_min, x_pitch_max=x_pitch_max, y_pitch_min=y_pitch_min, y_pitch_max=y_pitch_max,
@@ -714,6 +728,8 @@ def get_expected_pass_completion(
     else:
         xc = simulation_result.attack_cum_poss if use_poss else simulation_result.attack_cum_prob
         xc = xc[:, 0, -1]
+
+    xc = np.clip(xc, 0, 1)
 
     if np.any(np.isnan(xc)):
         warnings.warn("Some xC values are NaN.")
@@ -755,7 +771,7 @@ def get_dangerous_accessible_space(
 
     # Options
     infer_attacking_direction=True,
-    danger_weight=2,
+    danger_weight=_DEFAULT_DANGER_WEIGHT,
     chunk_size=20,
     return_cropped_result=False,
     additional_fields_to_return=None,
@@ -785,6 +801,9 @@ def get_dangerous_accessible_space(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS,
     normalize=_DEFAULT_NORMALIZE_FOR_DAS,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS,
+
+    factor=_DEFAULT_FACTOR_FOR_DAS,
+    factor2=_DEFAULT_FACTOR2_FOR_DAS,
 ) -> ReturnValueDAS:
     """
     >>> pd.set_option("display.max_columns", None)
@@ -802,11 +821,11 @@ def get_dangerous_accessible_space(
     >>> df_tracking["AS"], df_tracking["DAS"], df_tracking["frame_index"], df_tracking["player_index"] = ret.acc_space, ret.das, ret.frame_index, ret.player_index
     >>> df_tracking.head(5)
        frame_id player_id team_id    x     y   vx    vy team_in_possession  period_id           AS        DAS  frame_index  player_index
-    0         0         A    Home -0.1  0.00  0.1  0.05               Home          0  2867.490735  31.303366            0           0.0
-    1         1         A    Home  0.0  0.05  0.1  0.05               Home          0  2856.389286  30.439476            1           0.0
-    2         2         A    Home  0.1  0.10  0.1  0.05               Home          0  2848.446331  30.358591            2           0.0
-    3         3         A    Home  0.2  0.15  0.1  0.05               Home          0  2883.137891  30.941452            3           0.0
-    4         4         A    Home  0.3  0.20  0.1  0.05               Home          0  2884.457072  33.210618            4           0.0
+    0         0         A    Home -0.1  0.00  0.1  0.05               Home          0  3032.436435  38.048069            0           0.0
+    1         1         A    Home  0.0  0.05  0.1  0.05               Home          0  3030.995748  40.105718            1           0.0
+    2         2         A    Home  0.1  0.10  0.1  0.05               Home          0  3021.424520  40.332819            2           0.0
+    3         3         A    Home  0.2  0.15  0.1  0.05               Home          0  3023.307061  42.008610            3           0.0
+    4         4         A    Home  0.3  0.20  0.1  0.05               Home          0  3036.061084  43.128569            4           0.0
     """
     n_v0 = round(n_v0)
     missing_columns = [(parameter_name, col) for parameter_name, col in [("frame_col", frame_col), ("player_col", player_col), ("team_col", team_col), ("x_col", x_col), ("y_col", y_col), ("vx_col", vx_col), ("vy_col", vy_col), ("team_in_possession_col", team_in_possession_col)] if col not in df_tracking.columns]
@@ -859,6 +878,8 @@ def get_dangerous_accessible_space(
         v0_prob_aggregation_mode=v0_prob_aggregation_mode,
         normalize=normalize,
         use_efficient_sigmoid=use_efficient_sigmoid,
+        factor=factor,
+        factor2=factor2,
 
         fields_to_return=fields_to_return,
         use_progress_bar=use_progress_bar,
@@ -927,7 +948,7 @@ def get_individual_dangerous_accessible_space(
 
     # Options
     infer_attacking_direction=True,
-    danger_weight=2,
+    danger_weight=_DEFAULT_DANGER_WEIGHT,
     chunk_size=20,
     return_cropped_result=False,
     additional_fields_to_return=None,
@@ -957,6 +978,8 @@ def get_individual_dangerous_accessible_space(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS,
     normalize=_DEFAULT_NORMALIZE_FOR_DAS,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS,
+    factor=_DEFAULT_FACTOR_FOR_DAS,
+    factor2=_DEFAULT_FACTOR2_FOR_DAS,
 ) -> ReturnValueIndividualDAS:
     if additional_fields_to_return is None:
         additional_fields_to_return = []
@@ -969,7 +992,7 @@ def get_individual_dangerous_accessible_space(
         infer_attacking_direction, danger_weight, chunk_size, return_cropped_result, additional_fields_to_return,
         use_progress_bar, n_angles, phi_offset, n_v0, v0_min, v0_max, pass_start_location_offset, time_offset_ball,
         radial_gridsize, b0, b1, player_velocity, keep_inertial_velocity, use_max, v_max, a_max, inertial_seconds,
-        tol_distance, use_approx_two_point, v0_prob_aggregation_mode, normalize, use_efficient_sigmoid,
+        tol_distance, use_approx_two_point, v0_prob_aggregation_mode, normalize, use_efficient_sigmoid, factor, factor2,
     )
 
     df_tracking["frame_index"] = ret.frame_index

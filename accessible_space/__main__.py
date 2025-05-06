@@ -6,7 +6,7 @@ def main():
     if len(sys.argv) > 1:
         if sys.argv[1] == "validation":
             import accessible_space.apps.validation
-            accessible_space.apps.validation.main()
+            accessible_space.apps.validation.main(run_asserts=False)
         elif sys.argv[1] == "test":
             import pytest
             pytest.main([

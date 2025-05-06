@@ -36,50 +36,30 @@ ALL_OPTIONAL_FIELDS_TO_RETURN = tuple([field for field in _result_fields if fiel
 SimulationResult = collections.namedtuple("SimulationResult", _result_fields, defaults=[None] * len(_result_fields))
 
 # Default model parameters
-_DEFAULT_B0 = 13.260772123749703
-_DEFAULT_B1 = -127.09674547384373
-_DEFAULT_PASS_START_LOCATION_OFFSET = -1.8511411034901557
-_DEFAULT_TIME_OFFSET_BALL = -0.5271934355925483
-_DEFAULT_TOL_DISTANCE = 10.46499802361764
-_DEFAULT_PLAYER_VELOCITY = 20.15065924009609
+_DEFAULT_A_MAX = 10.659091365334193
+_DEFAULT_B0 = -4.565680899844368
+_DEFAULT_B1 = -188.74468208593532
+_DEFAULT_EXCLUDE_PASSER = True
+_DEFAULT_FACTOR = 5.077423030272923
+_DEFAULT_FACTOR2 = 1.0063028450754512
+_DEFAULT_INERTIAL_SECONDS = 1.1043767821571149
 _DEFAULT_KEEP_INERTIAL_VELOCITY = True
-_DEFAULT_A_MAX = 19.942472316273097
-_DEFAULT_V_MAX = 12.865546440947865
-_DEFAULT_USE_MAX = False
-_DEFAULT_USE_APPROX_TWO_POINT = True
-_DEFAULT_INERTIAL_SECONDS = 1.3395881692600928
-_DEFAULT_RADIAL_GRIDSIZE = 3.711704666931358
-_DEFAULT_V0_PROB_AGGREGATION_MODE = "mean"
+_DEFAULT_N_V0 = 13.751097117532021
 _DEFAULT_NORMALIZE = False
+_DEFAULT_PASS_START_LOCATION_OFFSET = -1.5245340256423476
+_DEFAULT_PLAYER_VELOCITY = 34.6836072667285
+_DEFAULT_RADIAL_GRIDSIZE = 5.034759576558597
+_DEFAULT_TIME_OFFSET_BALL = -0.4384754490159207
+_DEFAULT_TOL_DISTANCE = 9.986761680941445
+_DEFAULT_USE_APPROX_TWO_POINT = True
 _DEFAULT_USE_EFFICIENT_SIGMOID = True
-
-PARAMETER_BOUNDS = {
-    # Core simulation model
-    "pass_start_location_offset": [-3, 3],
-    "time_offset_ball": [-3, 3],  # very small and negative values can lead to artifacts around the passer (bc passer cannot reach the ball), also in conjunction with location offset
-    "radial_gridsize": [3, 7],
-    "b0": [-40, 40],
-    "b1": [-500, 0],
-    "player_velocity": [2, 50],
-    "keep_inertial_velocity": [True],  # , False],
-    "use_max": [False, True],
-    "v_max": [5, 40],
-    "a_max": [10, 45],
-    "inertial_seconds": [0.0, 1.5],  # , True],
-    "tol_distance": [0, 25],
-    "use_approx_two_point": [False, True],
-    "v0_prob_aggregation_mode": ["mean", "max"],
-    "normalize": [False, True],
-    "use_efficient_sigmoid": [False, True],
-
-    # xC
-    "exclude_passer": [True],
-    "use_poss": [False, True],  # , True],#, True],
-    "use_fixed_v0": [False, True],
-    "v0_min": [1, 14.999],
-    "v0_max": [15, 45],
-    "n_v0": [0.5, 15.5],
-}
+_DEFAULT_USE_FIXED_V0 = True
+_DEFAULT_USE_MAX = True
+_DEFAULT_USE_POSS = True
+_DEFAULT_V0_MAX = 42.18118275402132
+_DEFAULT_V0_MIN = 8.886015553615485
+_DEFAULT_V0_PROB_AGGREGATION_MODE = "mean"
+_DEFAULT_V_MAX = 19.85563874348074
 
 
 def _approximate_sigmoid(x):
@@ -145,29 +125,34 @@ def simulate_passes(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE,
     normalize=_DEFAULT_NORMALIZE,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID,
+
+    factor=_DEFAULT_FACTOR,
+    factor2=_DEFAULT_FACTOR2,
+
 ) -> SimulationResult:
     """ Calculate the pass simulation model using numpy matrices - Core functionality of this package
 
     # Simulate a pass from player A straight to the right towards a defender B who is 50m away.
     >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density.shape, res.defense_poss_density
-    ((1, 1, 13), array([[[6.03817628e-05, 1.24943114e-04, 6.50380212e-02, 6.65966356e-02,
-             6.66160419e-02, 6.66096103e-02, 6.66176652e-02, 6.66237273e-02,
-             6.66284545e-02, 6.66322441e-02, 6.66353499e-02, 6.66379416e-02,
-             6.66401372e-02]]]))
+    ((1, 1, 13), array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
+             1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,
+             1.99714902e-01, 1.99720237e-01, 1.99725098e-01, 1.99729544e-01,
+             1.99733627e-01]]]))
     >>> res.attack_cum_prob.shape, res.attack_cum_prob  # F x PHI x T
     ((1, 1, 13), array([[[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]]))
     >>> res.phi_grid.shape, res.phi_grid
     ((1, 1), array([[0]]))
     >>> res.r_grid.shape, res.r_grid
-    ((13,), array([ -1.8511411,  13.1488589,  28.1488589,  43.1488589,  58.1488589,
-            73.1488589,  88.1488589, 103.1488589, 118.1488589, 133.1488589,
-           148.1488589, 163.1488589, 178.1488589]))
+    ((13,), array([ -1.52453403,  13.47546597,  28.47546597,  43.47546597,
+            58.47546597,  73.47546597,  88.47546597, 103.47546597,
+           118.47546597, 133.47546597, 148.47546597, 163.47546597,
+           178.47546597]))
     >>> res.x_grid.shape, res.x_grid
-    ((1, 1, 13), array([[[ -1.8511411,  13.1488589,  28.1488589,  43.1488589,
-              58.1488589,  73.1488589,  88.1488589, 103.1488589,
-             118.1488589, 133.1488589, 148.1488589, 163.1488589,
-             178.1488589]]]))
+    ((1, 1, 13), array([[[ -1.52453403,  13.47546597,  28.47546597,  43.47546597,
+              58.47546597,  73.47546597,  88.47546597, 103.47546597,
+             118.47546597, 133.47546597, 148.47546597, 163.47546597,
+             178.47546597]]]))
     >>> res.y_grid.shape, res.y_grid
     ((1, 1, 13), array([[[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]]))
     """
@@ -233,7 +218,7 @@ def simulate_passes(
         TMP[:] = _approximate_sigmoid(TMP) if use_efficient_sigmoid else _sigmoid(TMP)
     TMP = np.nan_to_num(TMP, nan=0)  # F x P x V0 x PHI x T, gracefully handle overflow
     DT = T_BALL_SIM[:, :, 1] - T_BALL_SIM[:, :, 0]  # F x V0
-    ar_time = TMP / DT[:, np.newaxis, :, np.newaxis, np.newaxis]  # F x P x V0 x PHI x T
+    ar_time = TMP / (factor * (v0_grid ** (-factor2))[:, np.newaxis, :, np.newaxis, np.newaxis])  # F x P x V0 x PHI x T
     del TMP
     gc.collect()
 
@@ -300,7 +285,8 @@ def simulate_passes(
         # Normalize possibility density
         dpr_over_dx_vagg_poss_times_dx = player_poss_density * DX if _should_return_any_of(["attack_cum_poss", "attack_poss_density", "defense_cum_poss", "defense_poss_density", "player_cum_poss", "player_poss_density"]) else None  # F x P x PHI x T
         num_max = np.max(dpr_over_dx_vagg_poss_times_dx, axis=(1, 3)) if _should_return_any_of(["attack_cum_poss", "attack_poss_density", "defense_cum_poss", "defense_poss_density", "player_cum_poss", "player_poss_density"]) else None  # F x PHI
-        player_poss_density = player_poss_density / num_max[:, np.newaxis, :, np.newaxis] if _should_return_any_of(["attack_cum_poss", "attack_poss_density", "defense_cum_poss", "defense_poss_density", "player_cum_poss", "player_poss_density"]) else None  # F x P x PHI x T
+        with np.errstate(invalid='ignore'):
+            player_poss_density = player_poss_density / num_max[:, np.newaxis, :, np.newaxis] if _should_return_any_of(["attack_cum_poss", "attack_poss_density", "defense_cum_poss", "defense_poss_density", "player_cum_poss", "player_poss_density"]) else None  # F x P x PHI x T
 
         # TODO: Normalization is hard because the prob-/possibilities are time-dependent AND need to be normalized w.r.t both the player- and the time-axis.
 
@@ -388,16 +374,19 @@ def simulate_passes_chunked(
     v0_prob_aggregation_mode=_DEFAULT_V0_PROB_AGGREGATION_MODE,
     normalize=_DEFAULT_NORMALIZE,
     use_efficient_sigmoid=_DEFAULT_USE_EFFICIENT_SIGMOID,
+
+    factor=_DEFAULT_FACTOR,
+    factor2=_DEFAULT_FACTOR2,
 ) -> SimulationResult:
     """
     Execute pass simulation in chunks to avoid OOM.
 
     >>> res = simulate_passes_chunked(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density.shape, res.defense_poss_density
-    ((1, 1, 13), array([[[6.03817628e-05, 1.24943114e-04, 6.50380212e-02, 6.65966356e-02,
-             6.66160419e-02, 6.66096103e-02, 6.66176652e-02, 6.66237273e-02,
-             6.66284545e-02, 6.66322441e-02, 6.66353499e-02, 6.66379416e-02,
-             6.66401372e-02]]]))
+    ((1, 1, 13), array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
+             1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,
+             1.99714902e-01, 1.99720237e-01, 1.99725098e-01, 1.99729544e-01,
+             1.99733627e-01]]]))
     """
     if chunk_size is None or chunk_size <= 0:
         chunk_size = PLAYER_POS.shape[0]
@@ -446,6 +435,8 @@ def simulate_passes_chunked(
             v0_prob_aggregation_mode,
             normalize,
             use_efficient_sigmoid,
+            factor,
+            factor2,
         )
 
         if full_result is None:
@@ -500,12 +491,12 @@ def clip_simulation_result_to_pitch(
 
     >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density
-    array([[[6.03817628e-05, 1.24943114e-04, 6.50380212e-02, 6.65966356e-02,
-             6.66160419e-02, 6.66096103e-02, 6.66176652e-02, 6.66237273e-02,
-             6.66284545e-02, 6.66322441e-02, 6.66353499e-02, 6.66379416e-02,
-             6.66401372e-02]]])
+    array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
+             1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,
+             1.99714902e-01, 1.99720237e-01, 1.99725098e-01, 1.99729544e-01,
+             1.99733627e-01]]])
     >>> clip_simulation_result_to_pitch(res).defense_poss_density
-    array([[[6.03817628e-05, 1.24943114e-04, 6.50380212e-02, 6.65966356e-02,
+    array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
              0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
              0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
              0.00000000e+00]]])
@@ -556,20 +547,20 @@ def integrate_surfaces(result: SimulationResult, x_pitch_min=-52.5, x_pitch_max=
 
     >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0, 1*np.pi/3, 2*np.pi/3]]), np.array([[10, 10, 10]]), np.array([0]), np.array([0, 1]), radial_gridsize=15)
     >>> res.attack_poss_density
-    array([[[5.01860306e-04, 2.83800898e-04, 9.60655828e-04, 1.51166927e-02,
-             5.58643005e-03, 2.05892502e-03, 7.58410650e-04, 2.79275963e-04,
-             1.02821685e-04, 3.78515972e-05, 1.39330604e-05, 5.12838445e-06,
-             1.88752323e-06],
-            [5.01860306e-04, 2.83842053e-04, 1.56176094e-03, 4.01097977e-02,
-             1.48986317e-02, 5.49786705e-03, 2.02627323e-03, 7.46403600e-04,
-             2.74868286e-04, 1.01203777e-04, 3.72575566e-05, 1.37148820e-05,
-             5.04823027e-06],
-            [5.01860306e-04, 2.83884570e-04, 1.56415370e-03, 6.58973367e-02,
-             6.57290005e-02, 3.99084014e-02, 1.47809114e-02, 5.45310549e-03,
-             2.00980325e-03, 7.40381819e-04, 2.72668746e-04, 1.00400053e-04,
-             3.69636620e-05]]])
+    array([[[1.03407896e-03, 4.34113430e-04, 5.27060765e-04, 1.51129699e-04,
+             1.07173438e-05, 9.21090837e-07, 1.63818876e-07, 2.68226445e-07,
+             1.35596313e-08, 6.79782508e-10, 3.40267229e-11, 1.70221067e-12,
+             8.51279969e-14],
+            [1.03407896e-03, 4.34208810e-04, 5.31611162e-04, 6.84624667e-04,
+             9.50183615e-04, 3.61836440e-04, 6.51260823e-05, 1.07221499e-04,
+             5.43985030e-06, 2.73437156e-07, 1.37154339e-08, 6.87289329e-10,
+             3.44205118e-11],
+            [1.03407896e-03, 4.34301416e-04, 5.32301463e-04, 6.87956371e-04,
+             9.73593533e-04, 1.66948127e-03, 5.92149182e-03, 1.93318292e-01,
+             1.94810292e-01, 1.94616189e-01, 1.94033526e-01, 1.93218568e-01,
+             1.92180048e-01]]])
     >>> integrate_surfaces(res)
-    Areas(attack_prob=array([65.53238017]), attack_poss=array([97.44559496]), defense_prob=array([177.96948446]), defense_poss=array([413.95135925]), player_prob=array([[ 65.53238017, 177.96948446]]), player_poss=array([[ 97.44559496, 413.95135925]]))
+    Areas(attack_prob=array([10.74287034]), attack_poss=array([10.92307646]), defense_prob=array([224.5886554]), defense_poss=array([1002.23676372]), player_prob=array([[ 10.74287034, 224.5886554 ]]), player_poss=array([[  10.92307646, 1002.23676372]]))
     """
     result = clip_simulation_result_to_pitch(result, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max)
 
@@ -638,17 +629,17 @@ def as_dangerous_result(result, danger, danger_weight):
 
     >>> res = simulate_passes_chunked(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density
-    array([[[6.03817628e-05, 1.24943114e-04, 6.50380212e-02, 6.65966356e-02,
-             6.66160419e-02, 6.66096103e-02, 6.66176652e-02, 6.66237273e-02,
-             6.66284545e-02, 6.66322441e-02, 6.66353499e-02, 6.66379416e-02,
-             6.66401372e-02]]])
+    array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
+             1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,
+             1.99714902e-01, 1.99720237e-01, 1.99725098e-01, 1.99729544e-01,
+             1.99733627e-01]]])
     >>> danger = np.array([[[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.0, 1.0]]])
     >>> dangerous_res = as_dangerous_result(res, danger, danger_weight=1)
     >>> dangerous_res.defense_poss_density
-    array([[[0.00000000e+00, 1.24943114e-05, 1.30076042e-02, 1.99789907e-02,
-             2.66464168e-02, 3.33048051e-02, 3.99705991e-02, 4.66366091e-02,
-             5.33027636e-02, 5.99690197e-02, 6.66353499e-02, 6.66379416e-02,
-             6.66401372e-02]]])
+    array([[[0.00000000e+00, 1.66724063e-05, 2.64123764e-04, 5.99076346e-02,
+             7.98918155e-02, 9.98476160e-02, 1.19821499e-01, 1.39796313e-01,
+             1.59771922e-01, 1.79748214e-01, 1.99725098e-01, 1.99729544e-01,
+             1.99733627e-01]]])
     """
     def weighted_multiplication(_danger, _space, weight=danger_weight):
         return (_danger ** (1 / weight)) * _space if weight is not None else _danger * _space

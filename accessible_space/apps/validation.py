@@ -1,24 +1,26 @@
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
+from sklearn.exceptions import UndefinedMetricWarning
+from sklearn.metrics import roc_auc_score
+from pandas.errors import PerformanceWarning
+
+import warnings
+
+import io
 import functools
 import gc
-import importlib
+import random
 import math
-import sys
-import os
 import subprocess
-import uuid
 import netcal.metrics.confidence
+import concurrent.futures
 
 import matplotlib.patches
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
-import matplotlib.pyplot as plt
 import mplsoccer
-# import psutil
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,9 +31,19 @@ import streamlit as st
 import xmltodict
 import kloppy.metrica
 
+
+SEED = 6218700
+rng = np.random.default_rng(SEED)
+
 from accessible_space.utility import get_unused_column_name, progress_bar
-from accessible_space.interface import per_object_frameify_tracking_data, get_expected_pass_completion, get_dangerous_accessible_space, plot_expected_completion_surface
-from accessible_space.core import PARAMETER_BOUNDS
+from accessible_space.interface import per_object_frameify_tracking_data, get_expected_pass_completion, \
+    get_dangerous_accessible_space, plot_expected_completion_surface, _DEFAULT_N_V0_FOR_XC, _DEFAULT_V0_MAX_FOR_XC, \
+    _DEFAULT_USE_POSS_FOR_XC, _DEFAULT_V0_MIN_FOR_XC, _DEFAULT_USE_FIXED_V0_FOR_XC, get_das_gained
+from accessible_space.core import _DEFAULT_PASS_START_LOCATION_OFFSET, _DEFAULT_B0, _DEFAULT_TIME_OFFSET_BALL, _DEFAULT_A_MAX, \
+    _DEFAULT_USE_MAX, _DEFAULT_USE_APPROX_TWO_POINT, _DEFAULT_B1, _DEFAULT_PLAYER_VELOCITY, _DEFAULT_V_MAX, \
+    _DEFAULT_KEEP_INERTIAL_VELOCITY, _DEFAULT_INERTIAL_SECONDS, _DEFAULT_TOL_DISTANCE, _DEFAULT_RADIAL_GRIDSIZE, \
+    _DEFAULT_V0_PROB_AGGREGATION_MODE, _DEFAULT_NORMALIZE, _DEFAULT_USE_EFFICIENT_SIGMOID, _DEFAULT_FACTOR, \
+    _DEFAULT_FACTOR2
 
 
 cache_dir = os.path.join(os.path.dirname(__file__), ".joblib-cache")
@@ -39,32 +51,59 @@ memory = joblib.Memory(verbose=0)
 
 metrica_open_data_base_dir = "https://raw.githubusercontent.com/metrica-sports/sample-data/refs/heads/master/data"
 
-# PREFIT_PARAMS = {"a_max": 34.98577765329907, "b0": 14.307280169228356, "b1": -231.7861293805111,
-#                  "exclude_passer": True, "inertial_seconds": 1.1354178248836497,
-#                  "keep_inertial_velocity": True, "n_v0": 7.454954615235632, "normalize": False,
-#                  "pass_start_location_offset": -0.7978801423524864,
-#                  "player_velocity": 31.023509491980597, "radial_gridsize": 5.456708513777949,
-#                  "time_offset_ball": -0.6530280473299319, "tol_distance": 6.730245091897855,
-#                  "use_approx_two_point": True, "use_efficient_sigmoid": True, "use_fixed_v0": True,
-#                  "use_max": False, "use_poss": True, "v0_max": 27.829349276867582,
-#                  "v0_min": 4.142039313955755, "v0_prob_aggregation_mode": "mean",
-#                  "v_max": 7.055841492280175}
-PREFIT_PARAMS = {"a_max": 19.942472316273097, "b0": 13.260772123749703, "b1": -127.09674547384373,
-                 "exclude_passer": True, "inertial_seconds": 1.3395881692600928, "keep_inertial_velocity": True,
-                 "n_v0": 12.247054481867808, "normalize": False, "pass_start_location_offset": -1.8511411034901555,
-                 "player_velocity": 20.15065924009609, "radial_gridsize": 3.711704666931358,
-                 "time_offset_ball": -0.5271934355925483, "tol_distance": 10.46499802361764,
-                 "use_approx_two_point": True, "use_efficient_sigmoid": True, "use_fixed_v0": True, "use_max": False,
-                 "use_poss": True, "v0_max": 26.574734241456405, "v0_min": 12.008983050682373,
-                 "v0_prob_aggregation_mode": "mean", "v_max": 8.337625232516878}
-# PREFIT_PARAMS = {"a_max":15.320522976441866,"b0":7.652265667897893,"b1":-387.0112850702951,"exclude_passer":True,"inertial_seconds":0.8409501339936791,"keep_inertial_velocity":True,"n_v0":11.891555158694638,"normalize":False,"pass_start_location_offset":0.9120646929315286,"player_velocity":35.05882750031251,"radial_gridsize":3.767212990186012,"time_offset_ball":-0.2590790006707344,"tol_distance":13.736206935581796,"use_approx_two_point":True,"use_efficient_sigmoid":True,"use_fixed_v0":True,"use_max":False,"use_poss":True,"v0_max":35.27727379709076,"v0_min":13.163066579023884,"v0_prob_aggregation_mode":"mean","v_max":21.845468713434915}
-# PREFIT_PARAMS = {"a_max":41.90193498181908,"b0":-14.690056100552695,"b1":-148.88001744880762,"exclude_passer":True,"inertial_seconds":0.2250365781096205,"keep_inertial_velocity":True,"n_v0":14.54322577016436,"normalize":False,"pass_start_location_offset":1.9777702688754788,"player_velocity":17.57480218475458,"radial_gridsize":4.022150910529389,"time_offset_ball":-0.2329821187407557,"tol_distance":18.531430660435102,"use_approx_two_point":False,"use_efficient_sigmoid":True,"use_fixed_v0":True,"use_max":True,"use_poss":True,"v0_max":38.10728919164311,"v0_min":6.915469083830606,"v0_prob_aggregation_mode":"max","v_max":29.708163108996636}
+PARAMETER_BOUNDS = {
+    # Core simulation model
+    "pass_start_location_offset": [-3, 3],
+    "time_offset_ball": [-3, 3],  # very small and negative values can lead to artifacts around the passer (bc passer cannot reach the ball), also in conjunction with location offset
+    "radial_gridsize": [3, 7],
+    "b0": [-5, 5],
+    "b1": [-200, 0],
+    "player_velocity": [2, 50],
+    "keep_inertial_velocity": [True],
+    "use_max": [False, True],
+    "v_max": [5, 40],
+    "a_max": [10, 45],
+    "inertial_seconds": [0.0, 1.5],  # , True],
+    "tol_distance": [0, 25],
+    "use_approx_two_point": [False, True],
+    "v0_prob_aggregation_mode": ["mean", "max"],
+    # "normalize": [False, True],
+    "normalize": [False, True],
+    "use_efficient_sigmoid": [False, True],
+    # "use_efficient_sigmoid": [True],
+    # "factor": [0.0001, 20],
+    "factor": [0.0001, 3],
+    "factor2": [-2, 2],
+
+    # xC
+    "exclude_passer": [True],
+    # "use_poss": [False, True],  # , True],#, True],
+    "use_poss": [False, True],  # , True],#, True],
+    # "use_fixed_v0": [False, True],
+    "use_fixed_v0": [False, True],
+    "v0_min": [1, 49.999],
+    "v0_max": [50, 70],
+    "n_v0": [15, 30],
+}
+
+PREFIT_PARAMS = {"a_max": _DEFAULT_A_MAX, "b0": _DEFAULT_B0, "b1": _DEFAULT_B1,
+                 "exclude_passer": True, "factor": _DEFAULT_FACTOR, "factor2": _DEFAULT_FACTOR2,
+                 "inertial_seconds": _DEFAULT_INERTIAL_SECONDS, "keep_inertial_velocity": _DEFAULT_KEEP_INERTIAL_VELOCITY,
+                 "n_v0": _DEFAULT_N_V0_FOR_XC,
+                 "normalize": _DEFAULT_NORMALIZE, "pass_start_location_offset": _DEFAULT_PASS_START_LOCATION_OFFSET,
+                 "player_velocity": _DEFAULT_PLAYER_VELOCITY, "radial_gridsize": _DEFAULT_RADIAL_GRIDSIZE,
+                 "time_offset_ball": _DEFAULT_TIME_OFFSET_BALL, "tol_distance": _DEFAULT_TOL_DISTANCE,
+                 "use_approx_two_point": _DEFAULT_USE_APPROX_TWO_POINT, "use_efficient_sigmoid": _DEFAULT_USE_EFFICIENT_SIGMOID, "use_fixed_v0": _DEFAULT_USE_FIXED_V0_FOR_XC, "use_max": _DEFAULT_USE_MAX,
+                 "use_poss": _DEFAULT_USE_POSS_FOR_XC, "v0_max": _DEFAULT_V0_MAX_FOR_XC, "v0_min": _DEFAULT_V0_MIN_FOR_XC,
+                 "v0_prob_aggregation_mode": _DEFAULT_V0_PROB_AGGREGATION_MODE, "v_max": _DEFAULT_V_MAX}
 
 
-def bootstrap_metric_ci(y_true, y_pred, fnc, n_iterations=1000, conf_level=0.95, **kwargs):
+def bootstrap_metric_ci(y_true, y_pred, fnc, n_iterations, conf_level=0.95, **kwargs):
     bs_loglosses = []
-    for _ in range(n_iterations * 10):
-        indices = np.random.choice(len(y_true), size=len(y_true), replace=True)
+    # for i in progress_bar(range(n_iterations), total=n_iterations):
+    # for i in range(n_iterations):
+    while True:
+        indices = rng.choice(len(y_true), size=len(y_true), replace=True)
         y_true_sample = y_true[indices]
         y_pred_sample = y_pred[indices]
         res = fnc(y_true_sample, y_pred_sample, **kwargs)
@@ -88,11 +127,11 @@ def bootstrap_metric_ci(y_true, y_pred, fnc, n_iterations=1000, conf_level=0.95,
 
 
 
-def bootstrap_logloss_ci(y_true, y_pred, n_iterations=1000, all_labels=np.array([0, 1]), conf_level=0.95):
+def bootstrap_logloss_ci(y_true, y_pred, n_iterations, all_labels=np.array([0, 1]), conf_level=0.95):
     return bootstrap_metric_ci(y_true, y_pred, sklearn.metrics.log_loss, n_iterations, conf_level, labels=all_labels)
 
 
-def bootstrap_brier_ci(y_true, y_pred, n_iterations=1000, conf_level=0.95):
+def bootstrap_brier_ci(y_true, y_pred, n_iterations, conf_level=0.95):
     return bootstrap_metric_ci(y_true, y_pred, sklearn.metrics.brier_score_loss, n_iterations, conf_level)
 
 
@@ -101,11 +140,11 @@ def ece(y_true, y_pred, bins=10):
     return ece.measure(y_pred, y_true)
 
 
-def ece_ci(y_true, y_pred, n_iterations=1000, conf_level=0.95):
+def ece_ci(y_true, y_pred, n_iterations, conf_level=0.95):
     return bootstrap_metric_ci(y_true, y_pred, ece, n_iterations, conf_level)
 
 
-def bootstrap_auc_ci(y_true, y_pred, n_iterations=1000, conf_level=0.95):
+def bootstrap_auc_ci(y_true, y_pred, n_iterations, conf_level=0.95):
     def error_handled_auc(y_true, y_pred):
         try:
             return sklearn.metrics.roc_auc_score(y_true, y_pred)
@@ -330,16 +369,16 @@ def get_metrica_data(dummy=False):
         # df_tracking["ball_velocity"] = np.sqrt(df_tracking["ball_vx"]**2 + df_tracking["ball_vy"]**2)
         for player in players:
             df_tracking[f"{player}_x"] = df_tracking[f"{player}_x"].astype(float)
-            xdiff = df_tracking[f"{player}_x"].diff().fillna(method="bfill")
-            xdiff2 = -df_tracking[f"{player}_x"].diff(periods=-1).fillna(method="ffill")
-            tdiff = df_tracking["timestamp"].diff().dt.total_seconds().fillna(method="bfill")
-            tdiff2 = -df_tracking["timestamp"].diff(periods=-1).dt.total_seconds().fillna(method="ffill")
+            xdiff = df_tracking[f"{player}_x"].diff().bfill()
+            xdiff2 = -df_tracking[f"{player}_x"].diff(periods=-1).ffill()
+            tdiff = df_tracking["timestamp"].diff().dt.total_seconds().bfill()
+            tdiff2 = -df_tracking["timestamp"].diff(periods=-1).dt.total_seconds().ffill()
             vx = (xdiff + xdiff2) / (tdiff + tdiff2)
             df_tracking[f"{player}_vx"] = vx
 
             df_tracking[f"{player}_y"] = df_tracking[f"{player}_y"].astype(float)
-            ydiff = df_tracking[f"{player}_y"].diff().fillna(method="bfill")
-            ydiff2 = -df_tracking[f"{player}_y"].diff(periods=-1).fillna(method="ffill")
+            ydiff = df_tracking[f"{player}_y"].diff().bfill()
+            ydiff2 = -df_tracking[f"{player}_y"].diff(periods=-1).ffill()
             vy = (ydiff + ydiff2)  # / (tdiff + tdiff2)
             df_tracking[f"{player}_vy"] = vy
             df_tracking[f"{player}_velocity"] = np.sqrt(vx ** 2 + vy ** 2)
@@ -459,13 +498,13 @@ def add_synthetic_passes(
     tracking_player_col="player_id", x_col="x", y_col="y",
     new_is_synthetic_col="is_synthetic"
 ):
-    st.write("n_synthetic_passes", n_synthetic_passes)
+    st.write("Adding", n_synthetic_passes, "synthetic passes")
     df_passes[new_is_synthetic_col] = False
     synthetic_passes = []
 
     teams = df_tracking[tracking_team_col].unique()
 
-    for _, p4ss in df_passes.sample(frac=1).iterrows():
+    for _, p4ss in df_passes.sample(frac=1, random_state=SEED).iterrows():
         # for attacking_team in df_tracking[tracking_team_col].unique():
         for attacking_team in teams:
             df_frame_players = df_tracking[
@@ -520,7 +559,7 @@ def add_synthetic_passes(
     return pd.concat([df_passes, df_synthetic_passes], axis=0)
 
 # TODO change definition of impossible pass to exclude passes where opponent is around passer (e.g. 5 meter radius)
-def get_scores(_df, baseline_accuracy, outcome_col="success", add_confidence_intervals=True):
+def get_scores(_df, baseline_accuracy, outcome_col="success", add_confidence_intervals=True, n_bootstrap_samples=1000):
     df = _df.copy()
 
     data = {}
@@ -548,16 +587,16 @@ def get_scores(_df, baseline_accuracy, outcome_col="success", add_confidence_int
         data["ece"] = ece(df[outcome_col].values, df["xc"].values)
 
         if add_confidence_intervals:
-            logloss_from_ci, logloss_ci_lower, logloss_ci_upper = bootstrap_logloss_ci(df[outcome_col].values, df["xc"].values)
+            logloss_from_ci, logloss_ci_lower, logloss_ci_upper = bootstrap_logloss_ci(df[outcome_col].values, df["xc"].values, n_iterations=n_bootstrap_samples)
             data["logloss_ci_lower"] = logloss_ci_lower
             data["logloss_ci_upper"] = logloss_ci_upper
-            _, brier_ci_lower, brier_ci_upper = bootstrap_brier_ci(df[outcome_col].values, df["xc"].values)
+            _, brier_ci_lower, brier_ci_upper = bootstrap_brier_ci(df[outcome_col].values, df["xc"].values, n_iterations=n_bootstrap_samples)
             data["brier_ci_lower"] = brier_ci_lower
             data["brier_ci_upper"] = brier_ci_upper
-            _, auc_ci_lower, auc_ci_upper = bootstrap_auc_ci(df[outcome_col].values, df["xc"].values)
+            _, auc_ci_lower, auc_ci_upper = bootstrap_auc_ci(df[outcome_col].values, df["xc"].values, n_iterations=n_bootstrap_samples)
             data["auc_ci_lower"] = auc_ci_lower
             data["auc_ci_upper"] = auc_ci_upper
-            _, ecll_ci_lower, ecll_ci_upper = ece_ci(df[outcome_col].values, df["xc"].values)
+            _, ecll_ci_lower, ecll_ci_upper = ece_ci(df[outcome_col].values, df["xc"].values, n_iterations=n_bootstrap_samples)
             data["ece_ci_lower"] = ecll_ci_lower
             data["ece_ci_upper"] = ecll_ci_upper
 
@@ -602,16 +641,16 @@ def get_scores(_df, baseline_accuracy, outcome_col="success", add_confidence_int
                 data[f"ece_{synth_str}"] = np.nan
 
             if add_confidence_intervals:
-                logloss_from_ci, logloss_ci_lower, logloss_ci_upper = bootstrap_logloss_ci(df_synth[outcome_col].values, df_synth["xc"].values)
+                logloss_from_ci, logloss_ci_lower, logloss_ci_upper = bootstrap_logloss_ci(df_synth[outcome_col].values, df_synth["xc"].values, n_iterations=n_bootstrap_samples)
                 data[f"logloss_ci_lower_{synth_str}"] = logloss_ci_lower
                 data[f"logloss_ci_upper_{synth_str}"] = logloss_ci_upper
-                _, brier_ci_lower, brier_ci_upper = bootstrap_brier_ci(df_synth[outcome_col].values, df_synth["xc"].values)
+                _, brier_ci_lower, brier_ci_upper = bootstrap_brier_ci(df_synth[outcome_col].values, df_synth["xc"].values, n_iterations=n_bootstrap_samples)
                 data[f"brier_ci_lower_{synth_str}"] = brier_ci_lower
                 data[f"brier_ci_upper_{synth_str}"] = brier_ci_upper
-                _, auc_ci_lower, auc_ci_upper = bootstrap_auc_ci(df_synth[outcome_col].values, df_synth["xc"].values)
+                _, auc_ci_lower, auc_ci_upper = bootstrap_auc_ci(df_synth[outcome_col].values, df_synth["xc"].values, n_iterations=n_bootstrap_samples)
                 data[f"auc_ci_lower_{synth_str}"] = auc_ci_lower
                 data[f"auc_ci_upper_{synth_str}"] = auc_ci_upper
-                _, ecll_ci_lower, ecll_ci_upper = ece_ci(df[outcome_col].values, df["xc"].values)
+                _, ecll_ci_lower, ecll_ci_upper = ece_ci(df[outcome_col].values, df["xc"].values, n_iterations=n_bootstrap_samples)
                 data["ece_ci_lower"] = ecll_ci_lower
                 data["ece_ci_upper"] = ecll_ci_upper
 
@@ -637,7 +676,7 @@ def get_scores(_df, baseline_accuracy, outcome_col="success", add_confidence_int
     return data
 
 
-def calibration_histogram(df, hist_col="xc", synth_col="is_synthetic", n_bins=None, binsize=None, add_text=True, use_boken_axis=True):
+def calibration_histogram(df, hist_col="xc", synth_col="is_synthetic", n_bins=None, binsize=None, add_text=True, use_boken_axis=True, ylim1=450, ylim2=1550, ylim3=1600, is_training=False):
     plt.rcParams.update(plt.rcParamsDefault)
     plt.style.use("seaborn-v0_8")
     plt.figure()
@@ -646,10 +685,10 @@ def calibration_histogram(df, hist_col="xc", synth_col="is_synthetic", n_bins=No
 
     if use_boken_axis:
         import brokenaxes
-        bax = brokenaxes.brokenaxes(xlims=((0, 1),), ylims=((0, 400), (1600, 1650)), hspace=0.125)
+        bax = brokenaxes.brokenaxes(xlims=((0, 1),), ylims=((0, ylim1), (ylim2, ylim3)), hspace=0.125)
     else:
         bax = plt.gca()
-    plt.title("Distribution of predicted pass success rates in training set")
+    # plt.title("Distribution of predicted pass success rates in training set")
 
     # x = np.linspace(0, 1, 100)
     # bax.plot(x, np.sin(10 * x), label='sin')
@@ -727,8 +766,8 @@ def calibration_histogram(df, hist_col="xc", synth_col="is_synthetic", n_bins=No
     # plt.gca().set_xlabel("X Axis", labelpad=20)  # Move X label down
     # plt.gca().set_ylabel("Y Axis", labelpad=20)  # Move Y label left
 
-    bax.set_xlabel("Predicted pass success probability", labelpad=7)
-    bax.set_ylabel("Number of passes in training set", labelpad=35)
+    bax.set_xlabel("Predicted pass completion probability", labelpad=7)
+    bax.set_ylabel(f"Number of passes in {'test' if not is_training else 'training'} set", labelpad=35)
 
     # bax.annotate('xxxx (synthetic passes)', xy=(0.1, 400), xytext=(0.1, 300),
     #             arrowprops=dict(facecolor='yellow', arrowstyle='->', lw=2, ls='dashed', color='yellow'),
@@ -743,13 +782,6 @@ def calibration_histogram(df, hist_col="xc", synth_col="is_synthetic", n_bins=No
     plt.rcParams.update(plt.rcParamsDefault)
 
     return plt.gcf()
-
-
-# df = pd.DataFrame({"xc": np.random.sample(size=1000), "is_synthetic": [True, False] * 500, "success": [True, False] * 500})
-# st.write("df")
-# st.write(df)
-# st.write(calibration_histogram(df, "xc", n_bins=10))
-# st.stop()
 
 
 def get_bins(df, prediction_col="xc", outcome_col="success", new_bin_col="bin", n_bins=None, binsize=None):
@@ -768,7 +800,7 @@ def get_bins(df, prediction_col="xc", outcome_col="success", new_bin_col="bin", 
     return df_calibration
 
 
-def bin_nr_calibration_plot(df, prediction_col="xc", outcome_col="success", n_bins=None, binsize=None, add_text=True, style="seaborn-v0_8", add_interval=True, interval_confidence_level=0.95, n_bootstrap_samples=1000):
+def bin_nr_calibration_plot(df, prediction_col="xc", outcome_col="success", n_bins=None, binsize=None, add_text=True, style="seaborn-v0_8", add_interval=True, interval_confidence_level=0.95, n_bootstrap_samples=1000, method="wilson"):
     bin_col = get_unused_column_name(df.columns, "bin")
 
     df_calibration = get_bins(df, prediction_col, outcome_col, bin_col, n_bins, binsize)
@@ -783,25 +815,39 @@ def bin_nr_calibration_plot(df, prediction_col="xc", outcome_col="success", n_bi
         avg_predictions = []
         uppers = []
         lowers = []
-        avg_avg_outcomes = []
-        for bin, df_bin in df.groupby(bin_col):
-            avg_outcomes = []
-            for i in range(n_bootstrap_samples):
-                df_sample = df_bin.sample(n=len(df_bin), replace=True)
-                avg_outcomes.append(df_sample[outcome_col].mean())
+        if method == "bootstrap":
+            avg_avg_outcomes = []
+            for bin, df_bin in df.groupby(bin_col):
+                avg_outcomes = []
+                for i in range(n_bootstrap_samples):
+                    df_sample = df_bin.sample(n=len(df_bin), replace=True)
+                    avg_outcomes.append(df_sample[outcome_col].mean())
 
-            avg_outcome_lower = np.percentile(avg_outcomes, 100 * (1 - interval_confidence_level) / 2)
-            avg_outcome_upper = np.percentile(avg_outcomes, 100 * (1 - (1 - interval_confidence_level) / 2))
-            avg_predictions.append(df_calibration.loc[df_calibration[bin_col] == bin, prediction_col].iloc[0])
-            avg_avg_outcomes.append(np.mean(avg_outcomes))
-            uppers.append(avg_outcome_upper)
-            lowers.append(avg_outcome_lower)
+                avg_outcome_lower = np.percentile(avg_outcomes, 100 * (1 - interval_confidence_level) / 2)
+                avg_outcome_upper = np.percentile(avg_outcomes, 100 * (1 - (1 - interval_confidence_level) / 2))
+                avg_predictions.append(df_calibration.loc[df_calibration[bin_col] == bin, prediction_col].iloc[0])
+                avg_avg_outcomes.append(np.mean(avg_outcomes))
+                uppers.append(avg_outcome_upper)
+                lowers.append(avg_outcome_lower)
 
-        avg_predictions = np.array(avg_predictions)
-        uppers = np.array(uppers)
-        lowers = np.array(lowers)
+            avg_predictions = np.array(avg_predictions)
+            uppers = np.array(uppers)
+            lowers = np.array(lowers)
 
-        df_bootstrap = pd.DataFrame({"avg_prediction": avg_predictions, "avg_outcome": avg_avg_outcomes, "upper": uppers, "lower": lowers})
+            df_bootstrap = pd.DataFrame({"avg_prediction": avg_predictions, "avg_outcome": avg_avg_outcomes, "upper": uppers, "lower": lowers})
+        # else:
+        #     for bin, df_bin in df.groupby(bin_col):
+        #         avg_outcomes = []
+        #         for i in range(n_bootstrap_samples):
+        #             df_sample = df_bin.sample(n=len(df_bin), replace=True)
+        #             avg_outcomes.append(df_sample[outcome_col].mean())
+        #
+        #         k = df_bin[outcome_col].sum()
+        #         n = len(df_bin)
+        #         ci_low, ci_upp = statsmodels.api.stats.proportion_confint(k, n, alpha=0.05, method='wilson')
+        #         avg_predictions.append(df_calibration.loc[df_calibration[bin_col] == bin, prediction_col].iloc[0])
+        #         uppers.append(ci_upp)
+        #         lowers.append(ci_low)
 
         plt.fill_between(avg_predictions, lowers, uppers, color='grey', alpha=0.3, label='Uncertainty Area')
 
@@ -822,9 +868,9 @@ def bin_nr_calibration_plot(df, prediction_col="xc", outcome_col="success", n_bi
     ax.set_yticks(np.arange(0, 1.1, 0.1))
     ax.set_yticklabels([f"{i:.1f}" for i in np.arange(0, 1.1, 0.1)])
 
-    ax.set_xlabel("Predicted pass success probability")
-    ax.set_ylabel("Observed pass success rate")
-    ax.set_title("Calibration curve of our model on the test data")
+    ax.set_xlabel("Predicted pass completion probability")
+    ax.set_ylabel("Observed pass completion rate")
+    # ax.set_title(title)
     return fig
 
 
@@ -867,9 +913,11 @@ def plot_pass(p4ss, df_tracking, add_legend=True, add_as=False, add_das=False, f
     if add_das or add_as:
         assert len(df_frame) > 0
         df_frame["ball_owning_team_id"] = p4ss["team_id"]
-        n_angles = 117  #  st.number_input("n_angles", 1, 200, 117, key=str(uuid.uuid4()))
-        radial_gridsize = 2.7 # st.number_input("radial_gridsize", 0.1, 10.0, 2.7, key=str(uuid.uuid4()))
-        das = get_dangerous_accessible_space(df_frame, team_in_possession_col="ball_owning_team_id", period_col=None, tol_distance=2.6, inertial_seconds=0.24, radial_gridsize=radial_gridsize, n_angles=n_angles, n_v0=100, v0_max=52.5)
+
+        das = get_dangerous_accessible_space(
+            df_frame, team_in_possession_col="ball_owning_team_id", period_col=None,
+            radial_gridsize=1, n_v0=200, n_angles=120,  # increase resolution for this plot
+        )
         if add_das:
             plot_expected_completion_surface(das.dangerous_result, color="red", plot_gridpoints=False)
         if add_as:
@@ -893,7 +941,7 @@ def plot_pass(p4ss, df_tracking, add_legend=True, add_as=False, add_das=False, f
 
         if team is None:
             continue
-        df_frame_team = df_frame[df_frame["team_id"] == team]
+        df_frame_team = df_frame[df_frame["team_id"] == team].copy()
 
         df_frame_team["player_name"] = df_frame_team["player_id"].map(lambda x: f"Player{str(x).replace('home_', '').replace('away_', '').replace('PlayerP', 'P')}")
 
@@ -912,7 +960,8 @@ def plot_pass(p4ss, df_tracking, add_legend=True, add_as=False, add_das=False, f
 
             # plot names
             # if i == 0:
-            plt.text(x[i], y[i] - 2.65, player_names[i], fontsize=8, color=team_color, ha="center", va="center")
+            if not np.isnan(x[i]) and not np.isnan(y[i]):
+                plt.text(x[i], y[i] - 2.65, player_names[i], fontsize=8, color=team_color, ha="center", va="center")
 
         plt.scatter(x, y, c=team_color, label=team_name, edgecolors="black", s=50, linewidth=1)
 
@@ -940,12 +989,6 @@ def plot_pass(p4ss, df_tracking, add_legend=True, add_as=False, add_das=False, f
     if add_legend:
         plt.legend(frameon=True, prop={'size': 9}, loc=legend_loc, bbox_to_anchor=legend_bbox_to_anchor)
 
-    # st.write(handles)
-    # st.write(labels)
-
-    # plt.xlim(-52.5, 52.5)
-    # plt.ylim(-34, 34)
-
     st.write(plt.gcf())
 
     if add_legend:
@@ -953,8 +996,8 @@ def plot_pass(p4ss, df_tracking, add_legend=True, add_as=False, add_das=False, f
     else:
         filename = f"{p4ss['frame_id']}_{add_das}_{add_as}"
 
-    # plt.savefig(os.path.join(os.path.dirname(__file__), f"{filename}.png"), dpi=300, bbox_inches="tight")
-    # plt.savefig(os.path.join(os.path.dirname(__file__), f"{filename}.pdf"), bbox_inches="tight")
+    plt.savefig(os.path.join(os.path.dirname(__file__), f"{filename}.png"), dpi=300, bbox_inches="tight")
+    plt.savefig(os.path.join(os.path.dirname(__file__), f"{filename}.pdf"), bbox_inches="tight")
 
     plt.close()
 
@@ -964,7 +1007,6 @@ def plot_pass(p4ss, df_tracking, add_legend=True, add_as=False, add_das=False, f
 def _choose_random_parameters(parameter_to_bounds):
     random_parameters = {}
     for param, bounds in parameter_to_bounds.items():
-        # st.write("B", param, bounds, str(type(bounds[0])), str(type(bounds[-1])), "bool", isinstance(bounds[0], bool), isinstance(bounds[0], int), isinstance(bounds[0], float))
         if isinstance(bounds[0], bool):  # order matters, bc bool is also int
             random_parameters[param] = np.random.choice([bounds[0], bounds[-1]])
         elif isinstance(bounds[0], int) or isinstance(bounds[0], float):
@@ -976,31 +1018,16 @@ def _choose_random_parameters(parameter_to_bounds):
     return random_parameters
 
 
-def simulate_parameters(df_training, dfs_tracking, use_prefit, seed, add_confidence_intervals, chunk_size=200, outcome_col="success", calculate_passes_json=False):
-    np.random.seed(seed)
+def simulate_parameters(df_training, dfs_tracking, use_prefit, add_confidence_intervals, chunk_size=200, outcome_col="success", calculate_passes_json=False, parameter_assignment=None):
     gc.collect()
 
-    data = {
-        # "brier_score": [],
-        # "logloss": [],
-        # "auc": [],
-        # "brier_score_synthetic": [],
-        # # "logloss_synthetic": [],
-        # # "auc_synthetic": [],
-        # "brier_score_real": [],
-        # "logloss_real": [],
-        # "auc_real": [],
-        # "passes_json": [],
-        # "parameters": [],
-    }
+    data = {}
 
-    # progress_bar_text.text(f"Simulation {i + 1}/{n_steps}")
-    # progress_bar.progress((i + 1) / n_steps)
-
-    if use_prefit:
-        parameter_assignment = PREFIT_PARAMS
-    else:
-        parameter_assignment = _choose_random_parameters(PARAMETER_BOUNDS)
+    if parameter_assignment is None:
+        if use_prefit:
+            parameter_assignment = PREFIT_PARAMS
+        else:
+            parameter_assignment = _choose_random_parameters(PARAMETER_BOUNDS)
 
     data_simres = {
         "xc": [],
@@ -1010,7 +1037,6 @@ def simulate_parameters(df_training, dfs_tracking, use_prefit, seed, add_confide
     dfs_training_passes = []
     for dataset_nr, df_training_passes in df_training.groupby("dataset_nr"):
         df_training_passes = df_training_passes.copy()
-        # df_training_passes = df_training_passes[df_training_passes["event_type"] == "PASS"]
         df_tracking = dfs_tracking[dataset_nr].copy()
         ret = get_expected_pass_completion(
             df_training_passes, df_tracking, event_frame_col="frame_id", tracking_frame_col="frame_id",
@@ -1036,35 +1062,23 @@ def simulate_parameters(df_training, dfs_tracking, use_prefit, seed, add_confide
         data_simres["success"].extend(df_training_passes[outcome_col].tolist())
         data_simres["is_synthetic"].extend(df_training_passes["is_synthetic"].tolist())
 
-        # print(dataset_nr, "lens data_simres", {k: len(v) for k, v in data_simres.items()})
-
         dfs_training_passes.append(df_training_passes.copy())
 
-    # print("B")
     df_training_passes = pd.concat(dfs_training_passes)
     training_passes_json = df_training_passes.to_json(orient="records")
     if calculate_passes_json:
         data["passes_json"] = training_passes_json
     else:
         data["passes_json"] = ""
-    # print("C")
 
     df_simres = pd.DataFrame(data_simres)
     data["parameters"] = parameter_assignment
     for key, value in parameter_assignment.items():
         data[key] = value
-    # print("D")
 
     scores = get_scores(df_simres, df_training[outcome_col].mean(), outcome_col=outcome_col, add_confidence_intervals=add_confidence_intervals)
     for key, value in scores.items():
-        # data[key].append(value)
         data[key] = value
-    # print("E")
-
-    # df_to_display = pd.DataFrame(data).sort_values("logloss", ascending=True)
-    # df_to_display.iloc[1:, df_to_display.columns.get_loc("passes_json")] = np.nan
-    # df_to_display.iloc[1:, df_to_display.columns.get_loc("parameters")] = np.nan
-    # display_df.write(df_to_display.head(20))
 
     gc.collect()
 
@@ -1072,14 +1086,13 @@ def simulate_parameters(df_training, dfs_tracking, use_prefit, seed, add_confide
 
 
 def validate_multiple_matches(
-    dfs_tracking, dfs_passes, n_steps=100, training_size=0.7, use_prefit=True,
-    outcome_col="success", tracking_team_col="team_id", event_team_col="team_id",
+    dfs_tracking, dfs_passes, n_steps=100, training_size=0.7, use_prefit=True, outcome_col="success", run_asserts=False,
 ):
     @st.fragment
     def frag_plot_das():
+        if not st.toggle("frag_plot_das", value=True):
+            return
         dataset_nr = st.number_input("Dataset nr", value=0, min_value=0, max_value=len(dfs_tracking) - 1, key="frag_plot_das2")
-        # max_frame = dfs_tracking[dataset_nr]["frame_id"].max()
-        # frame = st.number_input("Frame", value=0, min_value=0, max_value=max_frame, key="frag_plot_das")
         default_frame = 7404
         frames = dfs_tracking[dataset_nr]["frame_id"].unique().tolist()
         frame = st.selectbox("Frame", frames, key="frag_plot_das", index=frames.index(default_frame))
@@ -1087,76 +1100,38 @@ def validate_multiple_matches(
         teams = dfs_tracking[dataset_nr]["team_id"].dropna().unique()
         selected_team = st.selectbox("Team", teams, key="frag_plot_das3")
 
-        # df_frame = dfs_tracking[dataset_nr][dfs_tracking[dataset_nr]["frame_id"] == frame].copy()
-        # assert len(df_frame) > 0
-        # # plot pitch
-        # df_frame["ball_owning_team_id"] = selected_team
-        #
-        # das = get_dangerous_accessible_space(df_frame, team_in_possession_col="ball_owning_team_id", period_col=None)
-        # plot_expected_completion_surface(das.simulation_result)
-
-        for das in ["das", "as"]:
+        for das in ["as", "das"]:
             plot_pass({"frame_id": frame, "team_id": selected_team}, dfs_tracking[dataset_nr], add_legend=True,
                       legend_loc="lower left", add_as=das == "as", add_das=das == "das", flip=True, use_green_background=False,
                       legend_bbox_to_anchor=(0.05, 0.0), add_pass_to_legend=False)
-            st.write(plt.gcf())
-
 
     frag_plot_das()
-
-    random_state = 1893
 
     exclude_synthetic_passes_from_training_set = st.checkbox("Exclude synthetic passes from training set", value=False)
     exclude_synthetic_passes_from_test_set = st.checkbox("Exclude synthetic passes from test set", value=False)
     chunk_size = st.number_input("Chunk size", value=50, min_value=1, max_value=None)
-    max_workers = st.number_input("Max workers", value=5, min_value=1, max_value=None)
+    max_workers = st.number_input("Max workers", value=4, min_value=1, max_value=None)
 
     ## Add synthetic passes
     @st.cache_resource
     def _get_dfs_passes_with_synthetic():
         dfs_passes_with_synthetic = []
         for df_tracking, df_passes in progress_bar(zip(dfs_tracking, dfs_passes)):
-            # n_synthetic_passes = 5
             n_synthetic_passes = len(df_passes[df_passes["success"]]) - len(df_passes[~df_passes["success"]])
 
             with st.spinner(f"Adding synthetic passes to dataset ({n_synthetic_passes} synthetic passes)"):
                 df_passes = add_synthetic_passes(df_passes, df_tracking, n_synthetic_passes=n_synthetic_passes, tracking_frame_col="frame_id", event_frame_col="frame_id")
                 dfs_passes_with_synthetic.append(df_passes)
 
-            # if plot_synthetic_passes:
-            #     columns = st.columns(2)
-            #     for pass_nr, (_, synthetic_pass) in enumerate(df_passes[df_passes["is_synthetic"]].iterrows()):
-            #         df_frame = df_tracking[df_tracking["frame_id"] == synthetic_pass["frame_id"]]
-            #         fig = plt.figure()
-            #         plt.arrow(synthetic_pass["coordinates_x"], synthetic_pass["coordinates_y"], synthetic_pass["end_coordinates_x"] - synthetic_pass["coordinates_x"], synthetic_pass["end_coordinates_y"] - synthetic_pass["coordinates_y"], head_width=1, head_length=1, fc='k', ec='k')
-            #
-            #         plt.plot([-52.5, -52.5], [-34, 34], color="black", alpha=0.5)
-            #         plt.plot([52.5, 52.5], [-34, 34], color="black", alpha=0.5)
-            #         plt.plot([-52.5, 52.5], [-34, -34], color="black", alpha=0.5)
-            #         plt.plot([-52.5, 52.5], [34, 34], color="black", alpha=0.5)
-            #
-            #         df_frame_home = df_frame[df_frame[tracking_team_col] == synthetic_pass[event_team_col]]
-            #         plt.scatter(df_frame_home["x"], df_frame_home["y"], color="red", alpha=1)
-            #         df_frame_def = df_frame[(df_frame[tracking_team_col] != synthetic_pass[event_team_col]) & (df_frame[tracking_team_col].notna())]
-            #         plt.scatter(df_frame_def["x"], df_frame_def["y"], color="blue", alpha=1)
-            #         df_frame_ball = df_frame[df_frame[tracking_team_col].isna()]
-            #         plt.scatter(df_frame_ball["x"], df_frame_ball["y"], color="black", alpha=1, marker="x", s=100)
-            #
-            #         columns[pass_nr % 2].write(f"Pass {pass_nr} (frame {synthetic_pass['frame_id']})")
-            #         columns[pass_nr % 2].write(fig)
-            #
-            #         plt.close()
-
         return dfs_passes_with_synthetic
 
     dfs_passes_with_synthetic = _get_dfs_passes_with_synthetic()
 
-    ##
     dfs_training = []
     dfs_test = []
     for dataset_nr, df_passes in enumerate(dfs_passes_with_synthetic):
         df_passes = df_passes.copy()
-        dataset_nr_col = get_unused_column_name(df_passes.columns, "dataset_nr")
+        dataset_nr_col = "dataset_nr"
         df_passes[dataset_nr_col] = dataset_nr
         df_passes["stratification_var"] = df_passes[outcome_col].astype(str) + "_" + df_passes["is_synthetic"].astype(str)
 
@@ -1168,7 +1143,7 @@ def validate_multiple_matches(
         assert len(df_passes.index) == len(set(df_passes.index))
 
         df_training, df_test = sklearn.model_selection.train_test_split(
-            df_passes, stratify=df_passes["stratification_var"], train_size=training_size, random_state=random_state
+            df_passes, stratify=df_passes["stratification_var"], train_size=training_size, random_state=1893
         )
 
         if exclude_synthetic_passes_from_training_set:
@@ -1183,11 +1158,16 @@ def validate_multiple_matches(
         dfs_test.append(df_test.copy())
 
     df_training = pd.concat(dfs_training).reset_index(drop=True).copy()
-    st.write("df_training", df_training.shape)
     df_test = pd.concat(dfs_test).reset_index(drop=True).copy()
-    st.write("df_test", df_test.shape)
 
     # assert no duplicate "identifier"
+    st.write("df_training")
+    st.write(df_training)
+    st.write("df_test")
+    st.write(df_test)
+    i_dupes = df_training[df_training.duplicated(subset=["identifier"], keep=False)]
+    st.write("df_training.loc[i_dupes]")
+    st.write(i_dupes)
     assert len(df_training["identifier"]) == len(set(df_training["identifier"]))
     assert len(df_test["identifier"]) == len(set(df_test["identifier"]))
     # assert no overlapping "identifier"
@@ -1198,19 +1178,11 @@ def validate_multiple_matches(
 
     training_scores = get_scores(df_training, df_training[outcome_col].mean(), outcome_col=outcome_col, add_confidence_intervals=False)
 
-    # test_scores = get_scores(df_test, df_training[outcome_col].mean(), outcome_col=outcome_col)
-    # st.write("Training scores")
-    # st.write(training_scores)
-    # st.write("Test scores")
-    # st.write(test_scores)
-
     data = {
         "brier_score": [],
         "logloss": [],
         "auc": [],
         "brier_score_synthetic": [],
-        # "logloss_synthetic": [],
-        # "auc_synthetic": [],
         "brier_score_real": [],
         "logloss_real": [],
         "auc_real": [],
@@ -1218,34 +1190,39 @@ def validate_multiple_matches(
     }
     data.update({key: [] for key in training_scores.keys()})
     data["parameters"] = []
-    # progress_bar_text = st.empty()
-    # progress_bar = st.progress(0)
-    display_df = st.empty()
 
-    import concurrent.futures
-    df = None
     expensive_cols = ["passes_json", "parameters"]
-    # very_expensive_cols = ["passes_json"]
 
     simulate_params_partial = functools.partial(simulate_parameters, df_training, dfs_tracking, use_prefit, chunk_size=chunk_size, outcome_col=outcome_col, calculate_passes_json=False, add_confidence_intervals=False)
 
-    use_parallel_processing = st.checkbox("Use parallel processing", value=False)
+    use_parallel_processing = st.checkbox("Use parallel processing", value=True)
 
     optimization_target = st.selectbox("Select optimization target", [
         "logloss", "brier_score", "auc", "logloss_real", "brier_score_real", "auc_real", "logloss_synthetic", "brier_score_synthetic", "auc_synthetic",
     ])
+    ret = simulate_parameters(df_training, dfs_tracking, True,
+                              add_confidence_intervals=True, chunk_size=chunk_size, outcome_col=outcome_col,
+                              calculate_passes_json=True)
+    data = ret
+    df_data = pd.Series(data).to_frame().T
+    df_data["step_nr"] = 0
+    front_cols = ["step_nr", "logloss", "brier_score", "auc", "brier_score_synthetic", "logloss_synthetic",
+                  "auc_synthetic", "brier_score_real", "logloss_real", "auc_real"]
+    cols = front_cols + [col for col in df_data.columns if col not in front_cols]
+    df_data = df_data[cols]
+    df = df_data
+    st.write("df_prefit")
+    st.write(df)
+
+    st.write("display_df")
+    display_df = st.empty()
 
     if not use_prefit:
         if use_parallel_processing:
             with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-                tasks = [executor.submit(simulate_params_partial, seed=np.random.randint(0, 2**16 - 1)) for _ in range(n_steps)]
+                tasks = [executor.submit(simulate_params_partial) for _ in range(n_steps)]
 
                 for i, future in enumerate(progress_bar(concurrent.futures.as_completed(tasks), total=n_steps, desc="MP Simulation")):
-                    # process = psutil.Process(os.getpid())
-                    # process_id = os.getpid()
-                    # print(f"MAIN PROCESS {process_id}: Memory usage (MB): {process.memory_info().rss / 1024 ** 2:.2f} MB")
-                    # st.write(f"MAIN PROCESS {process_id}: Memory usage (MB): {process.memory_info().rss / 1024 ** 2:.2f} MB")
-
                     data = future.result()
                     df_data = pd.Series(data).to_frame().T
                     df_data["step_nr"] = i
@@ -1271,19 +1248,13 @@ def validate_multiple_matches(
                 except Exception as e:
                     st.write(e)
 
-                # memory_bytes = df.memory_usage(deep=True).sum()
-                # memory_mb = memory_bytes / (1024 ** 2)
-                # st.write(f"Memory usage of df (MB): {memory_mb:.2f} MB")
-
                 future = None
                 del future
-
-                # debug_memory_usage()
-
                 gc.collect()
+
         else:
             for i in progress_bar(range(n_steps), desc="Simulation", total=n_steps):
-                data = simulate_params_partial(seed=np.random.randint(0, 2**16 - 1))
+                data = simulate_params_partial()
                 df_data = pd.Series(data).to_frame().T
                 df_data["step_nr"] = i
                 front_cols = ["step_nr", "logloss", "brier_score", "auc", "brier_score_synthetic", "logloss_synthetic",
@@ -1296,8 +1267,6 @@ def validate_multiple_matches(
                 else:
                     df = pd.concat([df, df_data], axis=0)
                     df = df.sort_values(optimization_target, ascending=True).reset_index(drop=True)
-                    # if len(df) > 20:
-                    #     df.loc[20:, expensive_cols] = np.nan
                     if len(df) > 1:
                         df.loc[1:, expensive_cols] = np.nan
 
@@ -1309,32 +1278,14 @@ def validate_multiple_matches(
             except Exception as e:
                 st.write(e)
 
-            # memory_bytes = df.memory_usage(deep=True).sum()
-            # memory_mb = memory_bytes / (1024 ** 2)
-            # st.write(f"Memory usage of df (MB): {memory_mb:.2f} MB")
-
             future = None
             del future
-
-            # debug_memory_usage()
-
             gc.collect()
-
-    else:
-        ret = simulate_parameters(df_training, dfs_tracking, use_prefit, np.random.randint(0, 2**16 - 1), add_confidence_intervals=True, chunk_size=chunk_size, outcome_col=outcome_col, calculate_passes_json=True)
-        data = ret
-        df_data = pd.Series(data).to_frame().T
-        df_data["step_nr"] = 0
-        front_cols = ["step_nr", "logloss", "brier_score", "auc", "brier_score_synthetic", "logloss_synthetic", "auc_synthetic", "brier_score_real", "logloss_real", "auc_real"]
-        cols = front_cols + [col for col in df_data.columns if col not in front_cols]
-        df_data = df_data[cols]
-        df = df_data
-        display_df.write(df.head(20))
 
     df_training_results = df.sort_values(optimization_target, ascending=True).reset_index(drop=True)
 
     training_data_simres = df_training_results["passes_json"][0]
-    df_training_passes = pd.read_json(training_data_simres).copy()
+    df_training_passes = pd.read_json(io.StringIO(training_data_simres)).copy()
 
     # move logloss column and brier and auc etc to front
     cols = df_training_results.columns.tolist()
@@ -1351,7 +1302,7 @@ def validate_multiple_matches(
     best_index = df_training_results[optimization_target].idxmin()
     best_parameters = df_training_results["parameters"][best_index]
     best_passes = df_training_results["passes_json"][best_index]
-    df_best_passes = pd.read_json(best_passes).copy()
+    df_best_passes = pd.read_json(io.StringIO(best_passes)).copy()
     df_best_passes["error"] = (df_best_passes["success"] - df_best_passes["xc"]).abs()
 
     st.write("### Training results")
@@ -1361,21 +1312,31 @@ def validate_multiple_matches(
         n_bins = st.number_input("Number of bins for calibration plot", value=10, min_value=1, max_value=None, key="frag1")
         add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text1")
         style = st.selectbox("Style", plt.style.available, index=plt.style.available.index("seaborn-v0_8"), key="style1")
-        st.write(bin_nr_calibration_plot(df_best_passes, outcome_col=outcome_col, n_bins=n_bins, add_text=add_text, style=style))
+        # method = st.selectbox("CI-method", ["bootstrap", "wilson"], index=0, key="ci_method1")
+        method = "bootstrap"
+        st.write(bin_nr_calibration_plot(df_best_passes, outcome_col=outcome_col, n_bins=n_bins, add_text=add_text, style=style, method=method))
 
     @st.fragment
     def frag2():
         binsize = st.number_input("Binsize for calibration plot", value=0.1, min_value=0.01, max_value=None, key="frag2")
         add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text2")
         style = st.selectbox("Style", plt.style.available, index=plt.style.available.index("seaborn-v0_8"), key="style2")
-        st.write(bin_nr_calibration_plot(df_best_passes, outcome_col=outcome_col, binsize=binsize, add_text=add_text, style=style))
+        # method = st.selectbox("CI-method", ["bootstrap", "wilson"], index=0, key="ci_method2")
+        method = "bootstrap"
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag2_training.pdf"))
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag2_training.png"), dpi=300)
+        st.write(bin_nr_calibration_plot(df_best_passes, outcome_col=outcome_col, binsize=binsize, add_text=add_text, style=style, method=method))
 
     @st.fragment
     def frag3():
         use_boken_axis = st.checkbox("Use broken axis", value=True, key="frag3")
-        st.write(calibration_histogram(df_best_passes, n_bins=40, use_boken_axis=use_boken_axis))
-        # plt.savefig(os.path.join(os.path.dirname(__file__), "frag3_training.png"), dpi=300)
-        # plt.savefig(os.path.join(os.path.dirname(__file__), "frag3_training.pdf"))
+        ylim1 = st.number_input("Y-axis max", value=450.0, min_value=0.0, max_value=None, key="frag3_1")
+        ylim2 = st.number_input("Y-axis min 2", value=1550.0, min_value=0.0, max_value=None, key="frag3_2")
+        ylim3 = st.number_input("Y-axis max 2", value=1600.0, min_value=0.0, max_value=None, key="frag3_3")
+        st.write(calibration_histogram(df_best_passes, n_bins=40, use_boken_axis=use_boken_axis, ylim1=ylim1, ylim2=ylim2, ylim3=ylim3))
+        st.write("Max xC", df_best_passes["xc"].max())
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag3_training.png"), dpi=300)
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag3_training.pdf"))
 
     frag1()
     frag2()
@@ -1383,45 +1344,32 @@ def validate_multiple_matches(
 
     # st.stop()
 
-    if st.toggle("Show example passes", value=True):
+    if st.toggle("Show example passes", value=False):
+        df_best_passes["ambiguity"] = (df_best_passes["xc"] - 0.5).abs()
+        df_best_passes["closeness_to_55%"] = (df_best_passes["xc"] - 0.55).abs()
+        df_best_passes["closeness_to_40%"] = (df_best_passes["xc"] - 0.4).abs()
+        df_best_passes["closeness_to_72%"] = (df_best_passes["xc"] - 0.72).abs()
         for (text, df) in [
+            ("Most ambiguous real predictions", df_best_passes[~df_best_passes["is_synthetic"]].sort_values("ambiguity", ascending=True)),
+            ("Worst real unsuccessful pass predictions", df_best_passes[(~df_best_passes["success"]) & (~df_best_passes["is_synthetic"])].sort_values("error", ascending=False)),
             ("Random synthetic passes", df_best_passes[df_best_passes["is_synthetic"]].sample(frac=1).reset_index(drop=True)),
             ("Worst synthetic predictions", df_best_passes[df_best_passes["is_synthetic"]].sort_values("error", ascending=False)),
             ("Best synthetic predictions", df_best_passes[df_best_passes["is_synthetic"]].sort_values("error", ascending=True)),
-            ("Worst real predictions", df_best_passes[~df_best_passes["is_synthetic"]].sort_values("error", ascending=False)),
+            ("Worst real successful predictions", df_best_passes[df_best_passes["success"] & (~df_best_passes["is_synthetic"])].sort_values("error", ascending=False)),
             ("Best real predictions", df_best_passes[~df_best_passes["is_synthetic"]].sort_values("error", ascending=True)),
+            ("Real predictions closest to 72%", df_best_passes[~df_best_passes["is_synthetic"]].sort_values("closeness_to_72%", ascending=True)),
+            ("Real predictions closest to 40%", df_best_passes[~df_best_passes["is_synthetic"]].sort_values("closeness_to_40%", ascending=True)),
+            ("Real predictions closest to 55%", df_best_passes[~df_best_passes["is_synthetic"]].sort_values("closeness_to_55%", ascending=True)),
         ]:
             with st.expander(text):
                 for pass_nr, (_, p4ss) in enumerate(df.iterrows()):
                     st.write("#### Pass", pass_nr, "xc=", p4ss["xc"], "success=", p4ss["success"], "error=", p4ss["error"],
                              "is_synthetic=", p4ss["is_synthetic"])
-                    st.write(p4ss)
-                    for add_legend in [True, False]:
+                    for add_legend in [True]:#, False]:
                         plot_pass(p4ss, dfs_tracking[p4ss["dataset_nr"]], add_legend=add_legend, use_green_background=False)
-
-    #             plot_pass({"frame_id": frame, "team_id": selected_team}, dfs_tracking[dataset_nr], add_legend=True,
-                    #                       legend_loc="lower left", add_as=das == "as", add_das=das == "das", flip=True, use_green_background=False,
-                    #                       legend_bbox_to_anchor=(0.05, 0.0), add_pass_to_legend=False)
 
                     if pass_nr > 20:
                         break
-
-    # with st.expander("Worst predictions"):
-    #     for pass_nr, (_, p4ss) in enumerate(df_best_passes.sort_values("error", ascending=False).iterrows()):
-    #         # st.write("Pass", pass_nr, "xc=", p4ss["xc"], "success=", p4ss["success"], "error=", p4ss["error"], "is_synthetic=", p4ss["is_synthetic"])
-    #         st.write("#### Pass", pass_nr, "xc=", p4ss["xc"], "success=", p4ss["success"], "error=", p4ss["error"], "is_synthetic=", p4ss["is_synthetic"])
-    #         plot_pass(p4ss, dfs_tracking[p4ss["dataset_nr"]])
-    #
-    #         if pass_nr > 1:
-    #             break
-    #
-    # with st.expander("Best predictions"):
-    #     for pass_nr, (_, p4ss) in enumerate(df_best_passes.sort_values("error", ascending=True).iterrows()):
-    #         st.write("#### Pass", pass_nr, "xc=", p4ss["xc"], "success=", p4ss["success"], "error=", p4ss["error"], "is_synthetic=", p4ss["is_synthetic"])
-    #         plot_pass(p4ss, dfs_tracking[p4ss["dataset_nr"]])
-    #
-    #         if pass_nr > 1:
-    #             break
 
     data_simres = {
         "xc": [],
@@ -1454,19 +1402,25 @@ def validate_multiple_matches(
 
     df_simres_total = pd.concat([df_training_passes, df_test_passes]).reset_index(drop=True)
     df_simres_total_only_success = df_simres_total[df_simres_total["success"]].copy()
+    df_simres_total_only_fail = df_simres_total[~df_simres_total["success"]].copy()
     st.write("df_simres_total_only_success")
     st.write(df_simres_total_only_success)
-    st.write(df_simres_total_only_success["xc"].mean())
+    st.write("Average xC training + test", df_simres_total["xc"].mean())
+    avg_xc_total_only_success = df_simres_total_only_success["xc"].mean()
+    avg_xc_total_only_success_test = df_simres_test[df_simres_test["success"]]["xc"].mean()
+    avg_xc_total_only_failure_test = df_simres_total_only_fail["xc"].mean()
+    st.write("Average xC training + test only successful", avg_xc_total_only_success)
+    st.write("Average xC test only successful", avg_xc_total_only_success_test)
+    st.write("Average xC test only failure", avg_xc_total_only_failure_test)
 
-    test_scores = get_scores(df_simres_test.copy(), df_test[outcome_col].mean(), outcome_col=outcome_col, add_confidence_intervals=True)
+    test_scores = get_scores(df_simres_test.copy(), df_test[outcome_col].mean(), outcome_col=outcome_col, add_confidence_intervals=True, n_bootstrap_samples=2000)
     st.write("### Test scores")
     df_test_scores = pd.DataFrame(test_scores, index=[0])
 
     # order cols like training
     df_test_scores = df_test_scores[[col for col in df_training_results.columns if col in df_test_scores.columns]]
-
     st.write("df_test_scores")
-    st.write(df_test_scores)
+    st.write(df_test_scores.T)
 
     df_test_scores.to_csv("df_test_scores.csv", sep=";")
     st.write(f"Wrote test scores to {os.path.abspath('df_test_scores.csv')}")
@@ -1478,75 +1432,99 @@ def validate_multiple_matches(
     def frag1_test():
         n_bins = st.number_input("Number of bins for calibration plot", value=10, min_value=1, max_value=None, key="frag1_test")
         add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text1_test")
-        st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, n_bins=n_bins, add_text=add_text))
-        # plt.savefig(os.path.join(os.path.dirname(__file__), "frag1_test.png"), dpi=300)
-        # plt.savefig(os.path.join(os.path.dirname(__file__), "frag1_test.pdf"))
+        # method = st.selectbox("CI-method", ["bootstrap", "wilson"], index=0, key="ci_method4")
+        method = "bootstrap"
+        st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, n_bins=n_bins, add_text=add_text, method=method))
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag1_test.png"), dpi=300)
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag1_test.pdf"))
 
     @st.fragment
     def frag2_test():
         binsize = st.number_input("Binsize for calibration plot", value=0.1, min_value=0.01, max_value=None, key="frag2_test")
         add_text = st.checkbox("Add text to calibration plot", value=True, key="add_text2_test")
-        st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, binsize=binsize, add_text=add_text))
-        # plt.savefig(os.path.join(os.path.dirname(__file__), "frag2_test.pdf"))
+        # method = st.selectbox("CI-method", ["bootstrap", "wilson"], index=0, key="ci_method5")
+        method = "bootstrap"
+        st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, binsize=binsize, add_text=add_text, method=method))
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag2_test.pdf"))
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag2_test.png"), dpi=300)
+
+    biggest_xc_in_test_set = df_simres_test["xc"].max()
 
     @st.fragment
     def frag3_test():
         use_boken_axis = st.checkbox("Use broken axis", value=True, key="frag4_test")
-        st.write(calibration_histogram(df_simres_test, n_bins=40, use_boken_axis=use_boken_axis))
+        ylim1 = st.number_input("Y-axis max", value=175.0, min_value=0.0, max_value=None, key="frag3_12")
+        ylim2 = st.number_input("Y-axis min 2", value=675.0, min_value=0.0, max_value=None, key="frag3_22")
+        ylim3 = st.number_input("Y-axis max 2", value=700.0, min_value=0.0, max_value=None, key="frag3_32")
+        st.write(calibration_histogram(df_simres_test, n_bins=40, use_boken_axis=use_boken_axis, ylim1=ylim1, ylim2=ylim2, ylim3=ylim3))
+        st.write("Max xC", biggest_xc_in_test_set)
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag3_test.png"), dpi=300)
+        plt.savefig(os.path.join(os.path.dirname(__file__), "frag3_test.pdf"))
 
     frag1_test()
     frag2_test()
     frag3_test()
-    # st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, n_bins=10))
-    # st.write(bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, n_bins=20))
 
-    # for n_bins in [5, 10, 20]:
-    #     st.write(f"Calibration plot with {n_bins} bins")
-    #     fig = bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, n_bins=n_bins)
-    #     st.pyplot(fig)
-    #
-    # for binsize in [0.2, 0.1, 0.05]:
-    #     st.write(f"Calibration plot with binsize {binsize}")
-    #     fig = bin_nr_calibration_plot(df_simres_test, outcome_col=outcome_col, binsize=binsize)
-    #     st.pyplot(fig)
-    #
-    # st.stop()
+    df_test_results = df_test_scores
+    assert round(biggest_xc_in_test_set, 3) == 0.982
+    assert round(avg_xc_total_only_success_test, 3) == 0.852
 
-    # brier = sklearn.metrics.brier_score_loss(df_simres_test["success"], df_simres_test["xc"])
-    # logloss = sklearn.metrics.log_loss(df_simres_test["success"], df_simres_test["xc"], labels=[0, 1])
-    # try:
-    #     auc = sklearn.metrics.roc_auc_score(df_simres_test["success"], df_simres_test["xc"])
-    # except ValueError as e:
-    #     auc = e
-    #
-    # # brier = sklearn.metrics.brier_score_loss(df_test[outcome_col], df_test["xc"])
-    # # logloss = sklearn.metrics.log_loss(df_test[outcome_col], df_test["xc"])
-    # # auc = sklearn.metrics.roc_auc_score(df_test[outcome_col], df_test["xc"])
-    # st.write("#### Test results")
-    # st.write(f"Brier: {brier}")
-    # st.write(f"Logloss: {logloss}")
-    # st.write(f"AUC: {auc}")
-    #
-    # # brier_skill_score = 1 - brier / baseline_brier
-    # # st.write(f"Brier skill score: {brier_skill_score}")
-    #
-    # for is_synthetic in [True, False]:
-    #     df_synth = df_simres_test[df_simres_test["is_synthetic"] == is_synthetic]
-    #     brier = sklearn.metrics.brier_score_loss(df_synth["success"], df_synth["xc"])
-    #     logloss = sklearn.metrics.log_loss(df_synth["success"], df_synth["xc"], labels=[0, 1])
-    #     try:
-    #         auc = sklearn.metrics.roc_auc_score(df_synth["success"], df_synth["xc"])
-    #     except ValueError as e:
-    #         auc = e
-    #     st.write(f"#### Test results (synthetic={is_synthetic})")
-    #     st.write(f"Brier (synthetic={is_synthetic}): {brier}")
-    #     st.write(f"Logloss (synthetic={is_synthetic}): {logloss}")
-    #     st.write(f"AUC (synthetic={is_synthetic}): {auc}")
-    #
-    # return
+    top_result = df_test_results.iloc[0]
+
+    def _assert(a, b):
+        if a != b:
+            print(f"Assertion failed: {a} != {b}")
+            st.warning(f"Assertion failed: {a} != {b}")
+        assert a == b
+
+    if run_asserts:
+        # Validation results must equal the published results
+        _assert(round(top_result["logloss"], 3), 0.243)
+        _assert(round(top_result["logloss_real"], 3), 0.387),
+        _assert(round(top_result["brier_score"], 3), 0.075),
+        _assert(round(top_result["brier_score_real"], 3), 0.119),
+        _assert(round(top_result["ece"], 3), 0.029),
+        _assert(round(df_test_results["auc"].iloc[0], 3), 0.959),
+
+        _assert(round(df_test_results["logloss_ci_lower"].iloc[0], 3), 0.218),
+        _assert(round(df_test_results["logloss_ci_upper"].iloc[0], 3), 0.269),
+        _assert(round(df_test_results["brier_ci_lower"].iloc[0], 3), 0.066),
+        _assert(round(df_test_results["brier_ci_upper"].iloc[0], 3), 0.083),
+        _assert(round(df_test_results["auc_ci_lower"].iloc[0], 3), 0.950),
+        _assert(round(df_test_results["auc_ci_upper"].iloc[0], 3), 0.967),
+        _assert(round(df_test_results["ece_ci_lower"].iloc[0], 3), 0.021),
+        _assert(round(df_test_results["ece_ci_upper"].iloc[0], 3), 0.042),
+
+        _assert(round(df_test_results["logloss_real"].iloc[0], 3), 0.387),
+        _assert(round(df_test_results["brier_score_real"].iloc[0], 3), 0.119),
+        _assert(round(df_test_results["auc_real"].iloc[0], 3), 0.832),
+        _assert(round(df_test_results["logloss_ci_lower_real"].iloc[0], 3), 0.350),
+        _assert(round(df_test_results["logloss_ci_upper_real"].iloc[0], 3), 0.424),
+        _assert(round(df_test_results["brier_ci_lower_real"].iloc[0], 3), 0.106),
+        _assert(round(df_test_results["brier_ci_upper_real"].iloc[0], 3), 0.134),
+        _assert(round(df_test_results["auc_ci_lower_real"].iloc[0], 3), 0.800),
+        _assert(round(df_test_results["auc_ci_upper_real"].iloc[0], 3), 0.861),
+
+        _assert(round(df_test_results["baseline_logloss"].iloc[0], 3), 0.693),
+        _assert(round(df_test_results["baseline_brier"].iloc[0], 3), 0.250),
+        _assert(round(df_test_results["baseline_auc"].iloc[0], 3), 0.500),
+        _assert(round(df_test_results["baseline_loglos_real"].iloc[0], 3), 0.494),
+        _assert(round(df_test_results["baseline_brier_real"].iloc[0], 3), 0.157),
+        _assert(round(df_test_results["baseline_auc_real"].iloc[0], 3), 0.500),
+
+    st.markdown('<div id="done-flag">DONE</div>', unsafe_allow_html=True)
+
+    return df_test_scores, biggest_xc_in_test_set, avg_xc_total_only_success_test, avg_xc_total_only_failure_test
 
 
-def validation_dashboard(dummy=False):
+def validation_dashboard(dummy=False, run_asserts=False):
+    # suppress bs warnings
+    warnings.simplefilter(action='ignore', category=UndefinedMetricWarning)  # because this case is handled (just return nan)
+    warnings.simplefilter(action="ignore", category=PerformanceWarning)  # because this code is not performance-critical
+
+    np.random.seed(SEED)
+    random.seed(343431)
+
     dfs_tracking, dfs_event = get_metrica_data(dummy=dummy)
 
     ### DAS vs x_norm
@@ -1588,21 +1566,26 @@ def validation_dashboard(dummy=False):
         for _, p4ss in df_passes.iloc[:1].iterrows():
             plot_pass(p4ss, df_tracking)
 
-    validate_das(dfs_tracking, dfs_passes)
+    df_passes, target_density_success, target_density_fail = validate_das(dfs_tracking, dfs_passes)
+    if run_asserts:
+        assert round(target_density_fail, 3) == 0.427
+        assert round(target_density_success, 3) == 0.882
 
     n_steps = st.number_input("Number of simulations", value=25000)
     use_prefit = st.checkbox("Use prefit parameters", value=True)
 
-    return validate_multiple_matches(
-        dfs_tracking=dfs_tracking, dfs_passes=dfs_passes, outcome_col="success", n_steps=n_steps, use_prefit=use_prefit
+    df_test_scores, biggest_xc_in_test_set, avg_xc_total_only_success_test, avg_xc_total_only_failure_test = validate_multiple_matches(
+        dfs_tracking=dfs_tracking, dfs_passes=dfs_passes, outcome_col="success", n_steps=n_steps, use_prefit=use_prefit,
+        run_asserts=run_asserts,
     )
+
+    return df_test_scores, biggest_xc_in_test_set, avg_xc_total_only_success_test, avg_xc_total_only_failure_test, target_density_success, target_density_fail
 
 
 def validate_das(dfs_tracking, dfs_passes):
-    from accessible_space.interface import get_das_gained
-
     @st.cache_resource
-    def _get_das(dataset_nr):
+    def _get_das_of_dataset(dataset_nr):
+        st.write("1")
         df_passes = dfs_passes[dataset_nr]
         df_tracking = dfs_tracking[dataset_nr]
         das_result = get_das_gained(df_passes, df_tracking, event_success_col="success",
@@ -1614,7 +1597,7 @@ def validate_das(dfs_tracking, dfs_passes):
 
     dfs = []
     for dataset_nr in progress_bar([0, 1, 2], total=3):
-        das_result = _get_das(dataset_nr)
+        das_result = _get_das_of_dataset(dataset_nr)
 
         phi_grid = das_result.simulation_result.phi_grid[0]
         r_grid = das_result.simulation_result.r_grid
@@ -1623,6 +1606,7 @@ def validate_das(dfs_tracking, dfs_passes):
 
         df_passes = dfs_passes[dataset_nr]
         df_passes["frame_index"] = das_result.frame_index
+        df_passes["DAS_Gained"] = das_result.das_gained
 
         target_densities = []
         for pass_index, p4ss in progress_bar(dfs_passes[dataset_nr].iterrows(), total=len(dfs_passes[dataset_nr])):
@@ -1635,28 +1619,49 @@ def validate_das(dfs_tracking, dfs_passes):
             target_densities.append(target_density)
 
         df_passes["target_density"] = target_densities
-        df_passes = df_passes[df_passes["success"]]
         df_passes["dataset_nr"] = dataset_nr
         dfs.append(df_passes)
 
     df_passes = pd.concat(dfs)
 
     # write target density mean
-    st.write("Target density mean")
+    st.write("Normalized AS density at target location of any passes")
     st.write(df_passes["target_density"].mean())
-    st.write(df_passes)
-    st.write(df_passes.groupby("dataset_nr")["target_density"].mean())
+    st.write("Normalized AS density at target location of successful passes")
+    target_density_success = df_passes.loc[df_passes["success"] == True, "target_density"].mean()
+    st.write(target_density_success)
+    dfg_mean = df_passes.loc[df_passes["success"] == True].groupby("dataset_nr")["target_density"].mean()
+    st.write("... by data set", dfg_mean)
+    st.write("Normalized AS density at target location of unsuccessful passes")
+    target_density_fail = df_passes.loc[df_passes["success"] == False, "target_density"].mean()
+    st.write(target_density_fail)
 
-def main(run_as_streamlit_app=True, dummy=False):
+    # plot DAS Gained histogram
+    st.write("DAS Gained histogram")
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    sns.histplot(df_passes[df_passes["DAS_Gained"].notna()], x="DAS_Gained", bins=60, kde=True)
+    st.write(plt.gcf())
+    plt.savefig(os.path.join(os.path.dirname(__file__), "das_gained_histogram.png"), dpi=300)
+    plt.savefig(os.path.join(os.path.dirname(__file__), "das_gained_histogram.pdf"))
+    # import plotly.express as px
+    # fig = px.histogram(df_passes, x="DAS_Gained", color="dataset_nr", marginal="box", title="DAS Gained histogram")
+    # fig.update_traces(opacity=0.75)
+    # st.plotly_chart(fig)
+
+    return df_passes, target_density_success, target_density_fail
+
+
+def main(run_as_streamlit_app=True, dummy=False, run_asserts=True):
     if run_as_streamlit_app:
         key_argument = "run_dashboard"
         if len(sys.argv) == 2 and sys.argv[1] == key_argument:
-            validation_dashboard(dummy=dummy)
+            return validation_dashboard(dummy=dummy, run_asserts=run_asserts)
         else:  # if script is called directly, call it again with streamlit
-            subprocess.run(['streamlit', 'run', os.path.abspath(__file__), key_argument], check=True)
+            return subprocess.run(['streamlit', 'run', os.path.abspath(__file__), key_argument], check=True)
     else:
-        validation_dashboard(dummy=dummy)
+        return validation_dashboard(dummy=dummy, run_asserts=run_asserts)
 
 
 if __name__ == '__main__':
-    main()
+    main(run_asserts=True)

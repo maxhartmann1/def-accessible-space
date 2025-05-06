@@ -13,3 +13,4 @@ venv/
 *.png
 *.pdf
 *.bat
+.ipynb_checkpoints/

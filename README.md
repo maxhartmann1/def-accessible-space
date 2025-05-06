@@ -2,10 +2,14 @@
 
 ![PyPI Version](https://img.shields.io/pypi/v/accessible-space)
 ![Python Versions](https://img.shields.io/badge/Python-%3E=3.7-blue)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://2i2c.mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Ftutorial.ipynb)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Fdemo.ipynb)
 ![License](https://img.shields.io/github/license/jonas-bischofberger/accessible-space)
 
-This package is a provider-agnostic, easy-to-use and production-ready implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics. Based on physical pass simulations across the pitch, DAS quantifies dangerous areas that a team can access by a pass, enabling rich insights into passing, off-ball attacking and defending behaviour, and spatial team dynamics.
+This is a provider-agnostic, easy-to-use and production-ready implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics. Based on physical pass simulations across the pitch, DAS quantifies dangerous areas that a team can access by a pass, allowing rich insights into passing, off-ball attacking and defending behaviour, and spatial team dynamics.
+
+To learn how to access DAS and related metrics, see the examples below.
+
+If you are interested in understanding the model, there is [a demo notebook explaining the basic workings of the model](https://github.com/jonas-bischofberger/accessible-space/blob/main/accessible_space/apps/demo.ipynb). This notebook can also be accessed without any installation through [Binder](https://mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Fdemo.ipynb).
 
 ### Install package 
 
