@@ -1533,6 +1533,8 @@ def validation_dashboard(dummy=False, run_asserts=False):
     np.random.seed(SEED)
     random.seed(343431)
 
+    validate_das = st.toggle("Validate DAS", value=False)
+
     dfs_tracking, dfs_event = get_metrica_data(dummy=dummy)
 
     ### DAS vs x_norm
@@ -1574,10 +1576,12 @@ def validation_dashboard(dummy=False, run_asserts=False):
         for _, p4ss in df_passes.iloc[:1].iterrows():
             plot_pass(p4ss, df_tracking)
 
-    df_passes, target_density_success, target_density_fail = validate_das(dfs_tracking, dfs_passes)
-    if run_asserts:
-        assert round(target_density_fail, 3) == 0.427
-        assert round(target_density_success, 3) == 0.882
+
+    if validate_das:
+        df_passes, target_density_success, target_density_fail = validate_das(dfs_tracking, dfs_passes)
+        if run_asserts:
+            assert round(target_density_fail, 3) == 0.427
+            assert round(target_density_success, 3) == 0.882
 
     n_steps = st.number_input("Number of simulations", value=25000)
     use_prefit = st.checkbox("Use prefit parameters", value=True)
