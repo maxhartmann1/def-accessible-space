@@ -33,6 +33,15 @@ import kloppy.metrica
 
 SEED = 1221871
 rng = np.random.default_rng(SEED)
+# {
+# "bit_generator":"PCG64"
+# "state":{
+# "state":8.74101197170723e+37
+# "inc":6.034160481890525e+37
+# }
+# "has_uint32":0
+# "uinteger":0
+# }
 st.write("rng.bit_generator.state start")
 st.write(rng.bit_generator.state)
 
