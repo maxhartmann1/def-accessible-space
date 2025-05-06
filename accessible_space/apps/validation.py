@@ -102,7 +102,9 @@ def bootstrap_metric_ci(y_true, y_pred, fnc, n_iterations, conf_level=0.95, **kw
     bs_loglosses = []
     # for i in progress_bar(range(n_iterations), total=n_iterations):
     # for i in range(n_iterations):
+    i = 0
     while True:
+        i += 1
         indices = rng.choice(len(y_true), size=len(y_true), replace=True)
         y_true_sample = y_true[indices]
         y_pred_sample = y_pred[indices]
@@ -111,6 +113,12 @@ def bootstrap_metric_ci(y_true, y_pred, fnc, n_iterations, conf_level=0.95, **kw
             bs_loglosses.append(res)
         if len(bs_loglosses) >= n_iterations:
             break
+        if i >= n_iterations * 10:
+            st.error("Bootstrap sampling took too long. Please check your data or parameters.")
+            st.write("y_true_sample", y_true_sample)
+            st.write("y_pred_sample", y_pred_sample)
+            st.write("bs_loglosses", bs_loglosses)
+            st.write("n_iterations", n_iterations)
 
     bs_loglosses = np.array(sorted(bs_loglosses))
 
@@ -504,7 +512,7 @@ def add_synthetic_passes(
 
     teams = df_tracking[tracking_team_col].unique()
 
-    for _, p4ss in df_passes.sample(frac=1, random_state=SEED).iterrows():
+    for _, p4ss in df_passes.sample(frac=1, random_state=rng.bit_generator).iterrows():
         # for attacking_team in df_tracking[tracking_team_col].unique():
         for attacking_team in teams:
             df_frame_players = df_tracking[
