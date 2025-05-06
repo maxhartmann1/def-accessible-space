@@ -33,6 +33,8 @@ import kloppy.metrica
 
 SEED = 1221871
 rng = np.random.default_rng(SEED)
+st.write("rng.bit_generator.state start")
+st.write(rng.bit_generator.state)
 
 from accessible_space.utility import get_unused_column_name, progress_bar
 from accessible_space.interface import per_object_frameify_tracking_data, get_expected_pass_completion, \
@@ -1112,7 +1114,7 @@ def validate_multiple_matches(
     max_workers = st.number_input("Max workers", value=4, min_value=1, max_value=None)
 
     ## Add synthetic passes
-    @st.cache_resource
+    # @st.cache_resource
     def _get_dfs_passes_with_synthetic():
         dfs_passes_with_synthetic = []
         for df_tracking, df_passes in progress_bar(zip(dfs_tracking, dfs_passes)):
@@ -1524,7 +1526,7 @@ def validation_dashboard(dummy=False, run_asserts=False):
     np.random.seed(SEED)
     random.seed(343431)
 
-    do_das = st.toggle("Validate DAS", value=False)
+    do_das = st.toggle("Validate DAS", value=True)
 
     dfs_tracking, dfs_event = get_metrica_data(dummy=dummy)
 
@@ -1581,12 +1583,14 @@ def validation_dashboard(dummy=False, run_asserts=False):
         dfs_tracking=dfs_tracking, dfs_passes=dfs_passes, outcome_col="success", n_steps=n_steps, use_prefit=use_prefit,
         run_asserts=run_asserts,
     )
+    st.write("rng.bit_generator.state end")
+    st.write(rng.bit_generator.state)
 
     return df_test_scores, biggest_xc_in_test_set, avg_xc_total_only_success_test, avg_xc_total_only_failure_test, target_density_success, target_density_fail
 
 
 def validate_das(dfs_tracking, dfs_passes):
-    @st.cache_resource
+    @memory.cache
     def _get_das_of_dataset(dataset_nr):
         st.write("1")
         df_passes = dfs_passes[dataset_nr]
