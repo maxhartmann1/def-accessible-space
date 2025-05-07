@@ -44,6 +44,9 @@ rng = np.random.default_rng(SEED)
 # }
 st.write("rng.bit_generator.state start")
 st.write(rng.bit_generator.state)
+print(rng.bit_generator.state)
+assert rng.bit_generator.state == {'bit_generator': 'PCG64', 'state': {'state': 87410119717072287666137457930238493692, 'inc': 60341604818905247986700519057288636087}, 'has_uint32': 0, 'uinteger': 0}
+
 
 from accessible_space.utility import get_unused_column_name, progress_bar
 from accessible_space.interface import per_object_frameify_tracking_data, get_expected_pass_completion, \
@@ -1478,8 +1481,6 @@ def validate_multiple_matches(
     frag3_test()
 
     df_test_results = df_test_scores
-    assert round(biggest_xc_in_test_set, 3) == 0.982
-    assert round(avg_xc_total_only_success_test, 3) == 0.852
 
     top_result = df_test_results.iloc[0]
 
@@ -1490,6 +1491,9 @@ def validate_multiple_matches(
         # assert a == b
 
     if run_asserts:
+        assert round(biggest_xc_in_test_set, 3) == 0.982
+        assert round(avg_xc_total_only_success_test, 3) == 0.852
+
         # Validation results must equal the published results
         _assert(round(top_result["logloss"], 3), 0.246)
         _assert(round(top_result["logloss_real"], 3), 0.387),
@@ -1524,7 +1528,7 @@ def validate_multiple_matches(
         _assert(round(df_test_results["baseline_brier_real"].iloc[0], 3), 0.157),
         _assert(round(df_test_results["baseline_auc_real"].iloc[0], 3), 0.500),
 
-    st.markdown('<div id="done-flag">DONE</div>', unsafe_allow_html=True)
+        st.markdown('<div id="done-flag">DONE</div>', unsafe_allow_html=True)
 
     return df_test_scores, biggest_xc_in_test_set, avg_xc_total_only_success_test, avg_xc_total_only_failure_test
 
@@ -1533,6 +1537,8 @@ def validation_dashboard(dummy=False, run_asserts=False):
     # suppress bs warnings
     warnings.simplefilter(action='ignore', category=UndefinedMetricWarning)  # because this case is handled (just return nan)
     warnings.simplefilter(action="ignore", category=PerformanceWarning)  # because this code is not performance-critical
+    warnings.simplefilter(action="ignore", category=UserWarning)
+    warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
 
     np.random.seed(SEED)
     random.seed(343431)
@@ -1586,6 +1592,7 @@ def validation_dashboard(dummy=False, run_asserts=False):
         if run_asserts:
             assert round(target_density_fail, 3) == 0.427
             assert round(target_density_success, 3) == 0.882
+            st.markdown('<div id="done-flag">DONE 1</div>', unsafe_allow_html=True)
 
     n_steps = st.number_input("Number of simulations", value=25000)
     use_prefit = st.checkbox("Use prefit parameters", value=True)
@@ -1605,6 +1612,9 @@ def validation_dashboard(dummy=False, run_asserts=False):
     # }
     st.write("rng.bit_generator.state end")
     st.write(rng.bit_generator.state)
+    print(rng.bit_generator.state)
+
+    assert rng.bit_generator.state == {'bit_generator': 'PCG64', 'state': {'state': 286257635543766940493387507884471841288, 'inc': 60341604818905247986700519057288636087}, 'has_uint32': 1, 'uinteger': 1775787077}
 
     return df_test_scores, biggest_xc_in_test_set, avg_xc_total_only_success_test, avg_xc_total_only_failure_test, target_density_success, target_density_fail
 

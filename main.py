@@ -8,6 +8,13 @@ importlib.reload(accessible_space.core)
 importlib.reload(accessible_space.interface)
 
 from accessible_space.tests.test_model import _get_butterfly_data
+import accessible_space.tests.test_real_world_data
 
 if __name__ == '__main__':
-    accessible_space.tests.test_model.test_additional_defender_decreases_as_and_additional_attacker_increases_as(_get_butterfly_data)
+    import streamlit as st
+
+    # print all members of accessible_space.interface
+    import accessible_space.interface
+    st.write(dir(accessible_space.interface))
+
+    accessible_space.tests.test_real_world_data.test_real_world_data(1)

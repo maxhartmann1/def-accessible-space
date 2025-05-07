@@ -12,7 +12,7 @@ wfork-streamlit-profiler
 brokenaxes
 pytest
 pytest-cov
-nbval
+# nbval
 build
 twine
 setuptools

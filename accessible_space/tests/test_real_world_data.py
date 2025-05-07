@@ -246,7 +246,7 @@ def test_real_world_data(dataset_nr):
 
     df_tracking_passes = df_tracking[df_tracking["Frame"].isin(df_passes["frame_id"].unique())]
     df_tracking_passes = df_tracking_passes.merge(df_passes[["frame_id", "passer_team"]], right_on="frame_id", left_on="Frame")
-    ret_das = accessible_space.get_individual_dangerous_accessible_space(
+    ret_das = accessible_space.interface.get_individual_dangerous_accessible_space(
         df_tracking_passes, frame_col="Frame", x_col="X", y_col="Y", ball_player_id="Ball",
         return_cropped_result=True, player_col="PLAYER", team_col="TEAM", team_in_possession_col="passer_team",
         period_col="Period",
