@@ -1539,6 +1539,7 @@ def validation_dashboard(dummy=False, run_asserts=False):
     warnings.simplefilter(action="ignore", category=PerformanceWarning)  # because this code is not performance-critical
     warnings.simplefilter(action="ignore", category=UserWarning)
     warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
+    warnings.simplefilter(action="ignore", category=FutureWarning)
 
     np.random.seed(SEED)
     random.seed(343431)
