@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import xmltodict
+import requests
 
 
 def _get_metrica_data(
@@ -80,12 +81,14 @@ def _get_metrica_data(
             return df.drop(columns=["tmp_next_player", "tmp_next_team", "tmp_receiver_player", "tmp_receiver_team"])
         else:
             # json_data = json.loads(open(f"{metrica_open_data_base_dir}/Sample_Game_3/Sample_Game_3_events.json"))
-            import requests
             json_data = requests.get(f"{metrica_open_data_base_dir}/Sample_Game_3/Sample_Game_3_events.json").json()
 
             df = pd.json_normalize(json_data["data"])
 
-            expanded_df = pd.DataFrame(df['subtypes'].apply(pd.Series))
+            # expanded_df = pd.DataFrame(df['subtypes'].apply(pd.Series))
+            expanded_df = pd.DataFrame(df['subtypes'].apply(
+                lambda x: pd.Series(x, dtype='float64') if x is None or isinstance(x, float) and pd.isna(x) else pd.Series(x)
+            ))
             expanded_df.columns = [f'subtypes.{col}' for col in expanded_df.columns]
 
             new_dfs = []

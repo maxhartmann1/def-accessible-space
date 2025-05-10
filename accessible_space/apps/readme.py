@@ -1,3 +1,4 @@
+import importlib
 import os
 import subprocess
 import sys
@@ -7,11 +8,22 @@ import pandas as pd
 import streamlit as st
 
 import accessible_space
+
+import accessible_space.interface
+import accessible_space.core
+import accessible_space.utility
+importlib.reload(accessible_space.interface)
+importlib.reload(accessible_space.core)
+importlib.reload(accessible_space.utility)
+
 from accessible_space.tests.resources import df_passes, df_tracking  # Example data
+
 
 
 def readme_dashboard():
     st.set_page_config(layout="wide")
+
+    chunk_size = 50  # Adjust according to your available RAM
 
     st.write("#### Prepare example data")
     st.code("""from accessible_space.tests.resources import df_passes, df_tracking  # Example data""", language="python")
@@ -32,16 +44,16 @@ def readme_dashboard():
 
     ### 1. Add expected completion to passes
     st.write("#### 1. Add expected completion to passes")
-    st.code("""pass_result = accessible_space.get_expected_pass_completion(df_passes, df_tracking, event_frame_col="frame_id", event_player_col="player_id", event_team_col="team_id", event_start_x_col="x", event_start_y_col="y", event_end_x_col="x_target", event_end_y_col="y_target", tracking_frame_col="frame_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_team_in_possession_col="team_in_possession", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", ball_tracking_player_id="ball")""", language="python")
-    pass_result = accessible_space.get_expected_pass_completion(df_passes, df_tracking, event_frame_col="frame_id", event_player_col="player_id", event_team_col="team_id", event_start_x_col="x", event_start_y_col="y", event_end_x_col="x_target", event_end_y_col="y_target", tracking_frame_col="frame_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_team_in_possession_col="team_in_possession", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", ball_tracking_player_id="ball")
+    st.code("""pass_result = accessible_space.get_expected_pass_completion(df_passes, df_tracking, event_frame_col="frame_id", event_player_col="player_id", event_team_col="team_id", event_start_x_col="x", event_start_y_col="y", event_end_x_col="x_target", event_end_y_col="y_target", tracking_frame_col="frame_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_team_in_possession_col="team_in_possession", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", ball_tracking_player_id="ball", chunk_size=chunk_size)""", language="python")
+    pass_result = accessible_space.get_expected_pass_completion(df_passes, df_tracking, event_frame_col="frame_id", event_player_col="player_id", event_team_col="team_id", event_start_x_col="x", event_start_y_col="y", event_end_x_col="x_target", event_end_y_col="y_target", tracking_frame_col="frame_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_team_in_possession_col="team_in_possession", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", ball_tracking_player_id="ball", chunk_size=chunk_size)
     st.code("""df_passes["xC"] = pass_result.xc""", language="python")
     df_passes["xC"] = pass_result.xc  # Expected pass completion rate
     st.write(df_passes[["event_string", "xC"]])
 
     ### 2. Add DAS Gained to passes
     st.write("#### 2. Add DAS Gained to passes")
-    st.code("""das_gained_result = accessible_space.get_das_gained(df_passes, df_tracking, event_frame_col="frame_id", event_success_col="pass_outcome", event_target_frame_col="target_frame_id", tracking_frame_col="frame_id", tracking_period_col="period_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34)""", language="python")
-    das_gained_result = accessible_space.get_das_gained(df_passes, df_tracking, event_frame_col="frame_id", event_success_col="pass_outcome", event_target_frame_col="target_frame_id", tracking_frame_col="frame_id", tracking_period_col="period_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34)
+    st.code("""das_gained_result = accessible_space.get_das_gained(df_passes, df_tracking, event_frame_col="frame_id", event_success_col="pass_outcome", event_target_frame_col="target_frame_id", tracking_frame_col="frame_id", tracking_period_col="period_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34, chunk_size=chunk_size)""", language="python")
+    das_gained_result = accessible_space.get_das_gained(df_passes, df_tracking, event_frame_col="frame_id", event_success_col="pass_outcome", event_target_frame_col="target_frame_id", tracking_frame_col="frame_id", tracking_period_col="period_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34, chunk_size=chunk_size)
     st.code("""df_passes["DAS_Gained"] = das_gained_result.das_gained
 df_passes["AS_Gained"] = das_gained_result.as_gained""")
     df_passes["DAS_Gained"] = das_gained_result.das_gained
@@ -50,8 +62,8 @@ df_passes["AS_Gained"] = das_gained_result.as_gained""")
 
     ### 3. Add Dangerous Accessible Space to tracking frames
     st.write("#### 3. Add Dangerous Accessible Space to tracking frames")
-    st.code("""pitch_result = accessible_space.get_dangerous_accessible_space(df_tracking, frame_col="frame_id", period_col="period_id", player_col="player_id", team_col="team_id", x_col="x", y_col="y", vx_col="vx", vy_col="vy", team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34)""", language="python")
-    pitch_result = accessible_space.get_dangerous_accessible_space(df_tracking, frame_col="frame_id", period_col="period_id", player_col="player_id", team_col="team_id", x_col="x", y_col="y", vx_col="vx", vy_col="vy", team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34)
+    st.code("""pitch_result = accessible_space.get_dangerous_accessible_space(df_tracking, frame_col="frame_id", period_col="period_id", player_col="player_id", team_col="team_id", x_col="x", y_col="y", vx_col="vx", vy_col="vy", team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34, chunk_size=chunk_size)""", language="python")
+    pitch_result = accessible_space.get_dangerous_accessible_space(df_tracking, frame_col="frame_id", period_col="period_id", player_col="player_id", team_col="team_id", x_col="x", y_col="y", vx_col="vx", vy_col="vy", team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34, chunk_size=chunk_size)
     st.code("""df_tracking["AS"] = pitch_result.acc_space
 df_tracking["DAS"] = pitch_result.das""", language="python")
     df_tracking["AS"] = pitch_result.acc_space  # Accessible space
@@ -59,7 +71,8 @@ df_tracking["DAS"] = pitch_result.das""", language="python")
     st.write(df_tracking[["frame_id", "team_in_possession", "AS", "DAS"]].drop_duplicates())
 
     ### Example 4. Add individual DAS to tracking frames
-    individual_result = accessible_space.get_individual_dangerous_accessible_space(df_tracking, frame_col="frame_id", period_col="period_id", player_col="player_id", team_col="team_id", x_col="x", y_col="y", vx_col="vx", vy_col="vy", team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34)
+    individual_result = accessible_space.get_individual_dangerous_accessible_space(df_tracking, frame_col="frame_id", period_col="period_id", player_col="player_id", team_col="team_id", x_col="x", y_col="y", vx_col="vx", vy_col="vy", team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34, chunk_size=chunk_size)
+    st.code("""individual_result = accessible_space.get_individual_dangerous_accessible_space(df_tracking, frame_col="frame_id", period_col="period_id", player_col="player_id", team_col="team_id", x_col="x", y_col="y", vx_col="vx", vy_col="vy", team_in_possession_col="team_in_possession", x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34, chunk_size=chunk_size)""", language="python")
     df_tracking["AS_player"] = individual_result.player_acc_space
     df_tracking["DAS_player"] = individual_result.player_das
     print(df_tracking[["frame_id", "player_id", "team_id", "team_in_possession", "AS_player", "DAS_player"]].drop_duplicates())
@@ -67,7 +80,8 @@ df_tracking["DAS"] = pitch_result.das""", language="python")
     ### 4. Access raw simulation results
     # Example 4.1: Expected interception rate = last value of the cumulative interception probability of the defending team
     st.write("#### Example 4.1: Expected interception rate")
-    pass_result = accessible_space.get_expected_pass_completion(df_passes, df_tracking, additional_fields_to_return=["defense_cum_prob"])
+    pass_result = accessible_space.get_expected_pass_completion(df_passes, df_tracking, additional_fields_to_return=["defense_cum_prob"], chunk_size=chunk_size)
+    st.code("""accessible_space.get_expected_pass_completion(df_passes, df_tracking, additional_fields_to_return=["defense_cum_prob"], chunk_size=chunk_size)""", language="python")
     pass_frame = 0  # We consider the pass at frame 0
     df_passes["frame_index"] = pass_result.event_frame_index  # frame_index implements a mapping from original frame number to indexes of the numpy arrays in the raw simulation_result.
     df_pass = df_passes[df_passes["frame_id"] == pass_frame]  # Consider the pass at frame 0
@@ -107,7 +121,7 @@ df_tracking["DAS"] = pitch_result.das""", language="python")
     # Example 4.3: Get (dangerous) accessible space of individual players
     st.write("#### Example 4.3: Get (dangerous) accessible space of individual players")
     df_tracking["player_index"] = pitch_result.player_index  # Mapping from player to index in simulation_result
-    individual_result = accessible_space.get_individual_dangerous_accessible_space(df_tracking, additional_fields_to_return=["player_poss_density"], period_col=None)
+    individual_result = accessible_space.get_individual_dangerous_accessible_space(df_tracking, additional_fields_to_return=["player_poss_density"], period_col=None, chunk_size=chunk_size)
     df_tracking["player_index"] = individual_result.player_index  # Mapping from player to index in simulation_result
     df_tracking["player_AS"] = individual_result.player_acc_space
     df_tracking["player_DAS"] = individual_result.player_das

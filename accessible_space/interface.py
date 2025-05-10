@@ -27,31 +27,32 @@ _DEFAULT_N_V0_FOR_XC = 13.751097117532021
 
 # Adjust some DAS parameters to allow inclusion of the passer (pass as a "quasi-carry") and reduce high pass hedging
 _DEFAULT_B0_FOR_DAS = _DEFAULT_B0
-_DEFAULT_B1_FOR_DAS = -1000
+_DEFAULT_B1_FOR_DAS = -2000
+# _DEFAULT_B1_FOR_DAS = _DEFAULT_B1
 _DEFAULT_PASS_START_LOCATION_OFFSET_FOR_DAS = 0
 _DEFAULT_TIME_OFFSET_BALL_FOR_DAS = 0
-_DEFAULT_TOL_DISTANCE_FOR_DAS = _DEFAULT_TOL_DISTANCE
-_DEFAULT_PLAYER_VELOCITY_FOR_DAS = 6.5
+_DEFAULT_TOL_DISTANCE_FOR_DAS = 5
+_DEFAULT_PLAYER_VELOCITY_FOR_DAS = 9
 _DEFAULT_KEEP_INERTIAL_VELOCITY_FOR_DAS = _DEFAULT_KEEP_INERTIAL_VELOCITY
 _DEFAULT_A_MAX_FOR_DAS = _DEFAULT_A_MAX
 _DEFAULT_V_MAX_FOR_DAS = _DEFAULT_V_MAX
-_DEFAULT_USE_MAX_FOR_DAS = _DEFAULT_USE_MAX
+_DEFAULT_USE_MAX_FOR_DAS = True
 _DEFAULT_USE_APPROX_TWO_POINT_FOR_DAS = _DEFAULT_USE_APPROX_TWO_POINT
-_DEFAULT_INERTIAL_SECONDS_FOR_DAS = _DEFAULT_INERTIAL_SECONDS
+_DEFAULT_INERTIAL_SECONDS_FOR_DAS = 0.07  # _DEFAULT_INERTIAL_SECONDS
 _DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS = _DEFAULT_V0_PROB_AGGREGATION_MODE
 _DEFAULT_NORMALIZE_FOR_DAS = True
 _DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS = _DEFAULT_USE_EFFICIENT_SIGMOID
 _DEFAULT_FACTOR_FOR_DAS = _DEFAULT_FACTOR
 _DEFAULT_FACTOR2_FOR_DAS = _DEFAULT_FACTOR2
 
-_DEFAULT_RADIAL_GRIDSIZE_FOR_DAS = 1
+_DEFAULT_RADIAL_GRIDSIZE_FOR_DAS = 3
 _DEFAULT_N_ANGLES_FOR_DAS = 30
 _DEFAULT_PHI_OFFSET = 0
-_DEFAULT_N_V0_FOR_DAS = 30
+_DEFAULT_N_V0_FOR_DAS = 15
 _DEFAULT_V0_MIN_FOR_DAS = 3
-_DEFAULT_V0_MAX_FOR_DAS = 45
+_DEFAULT_V0_MAX_FOR_DAS = 30
 
-_DEFAULT_DANGER_WEIGHT = 2
+_DEFAULT_DANGER_WEIGHT = 1
 
 ReturnValueDASGained = collections.namedtuple("ReturnValueDASGained", [
     "acc_space", "das", "acc_space_reception", "das_reception", "as_gained", "das_gained", "simulation_result",
@@ -346,6 +347,7 @@ def get_das_gained(
 
     # Options
     infer_attacking_direction=True,
+    exclude_passer=False,
     use_event_coordinates_as_ball_position=True,
     use_event_team_as_team_in_possession=True,
     danger_weight=_DEFAULT_DANGER_WEIGHT,
@@ -437,14 +439,17 @@ def get_das_gained(
         df_tracking_passes_and_receptions[tracking_team_in_possession_col] = None
         df_tracking_passes_and_receptions = _replace_column_values_except_nans(df_tracking_passes_and_receptions, unique_frame_col, tracking_team_in_possession_col, df_passes, unique_frame_col, event_team_col)
         df_tracking_passes_and_receptions = _replace_column_values_except_nans(df_tracking_passes_and_receptions, unique_frame_col, tracking_team_in_possession_col, df_passes, unique_frame_reception_col, event_receiver_team_col)
-
+    import streamlit as st
+    st.write("exclude_passer")
+    st.write(exclude_passer)
     ret = get_dangerous_accessible_space(
         df_tracking_passes_and_receptions,
         frame_col=unique_frame_col, player_col=tracking_player_col, team_col=tracking_team_col,
         x_col=tracking_x_col, y_col=tracking_y_col, vx_col=tracking_vx_col, vy_col=tracking_vy_col,
         team_in_possession_col=tracking_team_in_possession_col, ball_player_id=ball_tracking_player_id,
         attacking_direction_col=tracking_attacking_direction_col, period_col=tracking_period_col,
-        passer_to_exclude_col=tracking_passer_to_exclude_col,
+        passer_col=tracking_passer_to_exclude_col,
+        exclude_passer=exclude_passer,
         x_pitch_min=x_pitch_min, x_pitch_max=x_pitch_max, y_pitch_min=y_pitch_min, y_pitch_max=y_pitch_max,
 
         # Options
@@ -542,7 +547,7 @@ def get_expected_pass_completion(
     clip_to_pitch=True,  # Whether to calculate xC as aggregated interception probability at the pitch boundary or at the end of the simulation (beyond pitch boundary)
     use_event_coordinates_as_ball_position=True,
     use_event_team_as_team_in_possession=True,
-    chunk_size=200,
+    chunk_size=20,
     additional_fields_to_return=None,
     use_progress_bar=False,
 
@@ -672,10 +677,11 @@ def get_expected_pass_completion(
     # 4. Extract player team info
     passer_teams = df_passes[event_team_col].values  # F
     player_teams = np.array(player_teams)  # P
-    if exclude_passer:
-        passers_to_exclude = df_passes[event_player_col].values  # F
-    else:
-        passers_to_exclude = None
+    passers = df_passes[event_player_col].values  # F
+    # if exclude_passer:
+    #     passers_to_exclude = df_passes[event_player_col].values  # F
+    # else:
+    #     passers_to_exclude = None
 
     # 5. Simulate passes to get expected completion
     fields_to_return = ["attack_cum_poss"] if use_poss else ["attack_cum_prob"]
@@ -685,7 +691,8 @@ def get_expected_pass_completion(
     simulation_result = simulate_passes_chunked(
         # xC parameters
         PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_teams, player_teams, players,
-        passers_to_exclude=passers_to_exclude,
+        passers=passers,
+        exclude_passer=exclude_passer,
 
         use_progress_bar=use_progress_bar,
         fields_to_return=fields_to_return,
@@ -764,13 +771,15 @@ def get_dangerous_accessible_space(
     # Tracking schema
     frame_col="frame_id", player_col="player_id", ball_player_id="ball", team_col="team_id", x_col="x",
     y_col="y", vx_col="vx", vy_col="vy", attacking_direction_col=None, period_col=_unset,
-    team_in_possession_col="team_in_possession", passer_to_exclude_col=None,
+    team_in_possession_col="team_in_possession", passer_col=None,
 
     # Pitch coordinate system
     x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
 
     # Options
     infer_attacking_direction=True,
+    exclude_passer=False,
+    respect_offside=True,
     danger_weight=_DEFAULT_DANGER_WEIGHT,
     chunk_size=20,
     return_cropped_result=False,
@@ -846,11 +855,16 @@ def get_dangerous_accessible_space(
         vx_col=vx_col, vy_col=vy_col, controlling_team_col=team_in_possession_col,
     )
     F = PLAYER_POS.shape[0]
-    if passer_to_exclude_col is not None:
-        PASSERS_TO_EXCLUDE = df_tracking.drop_duplicates(frame_col)[passer_to_exclude_col].values  # F
-        assert F == PASSERS_TO_EXCLUDE.shape[0]
+    if passer_col is not None:
+        PASSERS = df_tracking.drop_duplicates(frame_col)[passer_col].values  # F
     else:
-        PASSERS_TO_EXCLUDE = None
+        PASSERS = None
+    # if exclude_passer:
+    #     if passer_col not in df_tracking.columns:
+    #         raise ValueError("'passer_col' must be set if 'exclude_passer' is set to True")
+    #     assert F == PASSERS_TO_EXCLUDE.shape[0]
+    # else:
+    #     PASSERS_TO_EXCLUDE = None
 
     phi_grid = np.tile(np.linspace(phi_offset, 2*np.pi+phi_offset, n_angles, endpoint=False), (F, 1))  # F x PHI
     v0_grid = np.tile(np.linspace(v0_min, v0_max, n_v0), (F, 1))  # F x V0
@@ -859,9 +873,28 @@ def get_dangerous_accessible_space(
         additional_fields_to_return = []
     fields_to_return = list(set(["attack_poss_density"] + list(additional_fields_to_return)))
 
+    # Get attacking direction
+    if infer_attacking_direction and attacking_direction_col is not None:
+        warnings.warn("'attacking_direction_col' is specified, thus 'infer_attacking_direction' is ignored.")
+    if infer_attacking_direction and attacking_direction_col is None:
+        attacking_direction_col = get_unused_column_name(df_tracking.columns, "attacking_direction")
+        df_tracking.loc[df_tracking[player_col] == ball_player_id, team_col] = None
+        df_tracking[attacking_direction_col] = infer_playing_direction(
+            df_tracking, team_col=team_col, period_col=period_col, team_in_possession_col=team_in_possession_col,
+            x_col=x_col, ball_team=None,
+        )
+    if attacking_direction_col is not None:
+        fr2playingdirection = df_tracking[[frame_col, attacking_direction_col]].set_index(frame_col).to_dict()[attacking_direction_col]
+        ATTACKING_DIRECTION = np.array([fr2playingdirection[frame] for frame in frame_to_index])  # F
+    else:
+        ATTACKING_DIRECTION = np.ones(F)  # if no attacking direction is given and we didn't infer it, we assume always left-to-right
+        warnings.warn("Neither 'attacking_direction_col' nor 'infer_attacking_direction' are specified, thus we assume always left-to-right to calculate danger and DAS")
+
     simulation_result = simulate_passes_chunked(
         PLAYER_POS, BALL_POS, phi_grid, v0_grid, controlling_teams, player_teams, players,
-        passers_to_exclude=PASSERS_TO_EXCLUDE,
+        passers=PASSERS,
+        exclude_passer=exclude_passer,
+        respect_offside=respect_offside,
         pass_start_location_offset=pass_start_location_offset,
         time_offset_ball=time_offset_ball,
         radial_gridsize=radial_gridsize,
@@ -886,26 +919,13 @@ def get_dangerous_accessible_space(
         chunk_size=chunk_size,
 
         x_pitch_min=x_pitch_min, x_pitch_max=x_pitch_max, y_pitch_min=y_pitch_min, y_pitch_max=y_pitch_max,
+
+        playing_direction=ATTACKING_DIRECTION,
     )
     if return_cropped_result:
         simulation_result = clip_simulation_result_to_pitch(simulation_result, x_pitch_min=x_pitch_min, x_pitch_max=x_pitch_max, y_pitch_min=y_pitch_min, y_pitch_max=y_pitch_max)
 
     ### Add danger to simulation result
-    # 1. Get attacking direction
-    if infer_attacking_direction:
-        attacking_direction_col = get_unused_column_name(df_tracking.columns, "attacking_direction")
-        df_tracking.loc[df_tracking[player_col] == ball_player_id, team_col] = None
-        df_tracking[attacking_direction_col] = infer_playing_direction(
-            df_tracking, team_col=team_col, period_col=period_col, team_in_possession_col=team_in_possession_col,
-            x_col=x_col, ball_team=None,
-        )
-    if attacking_direction_col is not None:
-        fr2playingdirection = df_tracking[[frame_col, attacking_direction_col]].set_index(frame_col).to_dict()[attacking_direction_col]
-        ATTACKING_DIRECTION = np.array([fr2playingdirection[frame] for frame in frame_to_index])  # F
-    else:
-        ATTACKING_DIRECTION = np.ones(F)  # if no attacking direction is given and we didn't infer it, we assume always left-to-right
-        warnings.warn("Neither 'attacking_direction_col' nor 'infer_attacking_direction' are specified, thus we assume always left-to-right to calculate danger and DAS")
-
     # 2. Calculate danger
     x_center = (x_pitch_max + x_pitch_min) / 2
     y_center = (y_pitch_max + y_pitch_min) / 2
@@ -948,6 +968,8 @@ def get_individual_dangerous_accessible_space(
 
     # Options
     infer_attacking_direction=True,
+    exclude_passer=False,
+    respect_offside=True,
     danger_weight=_DEFAULT_DANGER_WEIGHT,
     chunk_size=20,
     return_cropped_result=False,
@@ -989,7 +1011,7 @@ def get_individual_dangerous_accessible_space(
         df_tracking,
         frame_col, player_col, ball_player_id, team_col, x_col, y_col, vx_col, vy_col, attacking_direction_col,
         period_col, team_in_possession_col, passer_to_exclude_col, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max,
-        infer_attacking_direction, danger_weight, chunk_size, return_cropped_result, additional_fields_to_return,
+        infer_attacking_direction, exclude_passer, respect_offside, danger_weight, chunk_size, return_cropped_result, additional_fields_to_return,
         use_progress_bar, n_angles, phi_offset, n_v0, v0_min, v0_max, pass_start_location_offset, time_offset_ball,
         radial_gridsize, b0, b1, player_velocity, keep_inertial_velocity, use_max, v_max, a_max, inertial_seconds,
         tol_distance, use_approx_two_point, v0_prob_aggregation_mode, normalize, use_efficient_sigmoid, factor, factor2,

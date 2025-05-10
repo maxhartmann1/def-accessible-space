@@ -104,7 +104,10 @@ def simulate_passes(
     passer_teams,  # F, frame-wise team of passers
     player_teams,  # P, player teams
     players=None,  # P, players
-    passers_to_exclude=None,  # F, frame-wise passer, but only if we want to exclude the passer
+    passers=None,  # F, frame-wise passer
+    exclude_passer=False,
+    playing_direction=None,
+    respect_offside=False,
     fields_to_return=ALL_OPTIONAL_FIELDS_TO_RETURN,
     x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
 
@@ -128,12 +131,11 @@ def simulate_passes(
 
     factor=_DEFAULT_FACTOR,
     factor2=_DEFAULT_FACTOR2,
-
 ) -> SimulationResult:
     """ Calculate the pass simulation model using numpy matrices - Core functionality of this package
 
     # Simulate a pass from player A straight to the right towards a defender B who is 50m away.
-    >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
+    >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density.shape, res.defense_poss_density
     ((1, 1, 13), array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
              1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,
@@ -160,10 +162,25 @@ def simulate_passes(
         invalid_fields = set(fields_to_return) - set(ALL_OPTIONAL_FIELDS_TO_RETURN)
         raise ValueError(f"fields_to_return contains unknown fields: {invalid_fields}. Available: {ALL_OPTIONAL_FIELDS_TO_RETURN}")
 
-    _assert_matrix_consistency(PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_teams, player_teams, players, passers_to_exclude)
+    _assert_matrix_consistency(PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_teams, player_teams, players, passers)
 
     def _should_return_any_of(fields):
         return any([field in fields for field in fields_to_return])
+
+    # Pre-processing: Treat offside players like air
+    if respect_offside:
+        if playing_direction is None:
+            raise ValueError("'playing_direction' must be provided if 'respect_offside' is True")
+
+        PLAYERS_NORM_X = PLAYER_POS[:, :, 0] * playing_direction[:, np.newaxis]  # F x P
+        BALL_NORM_X = BALL_POS[:, 0] * playing_direction
+
+        is_attacking_team = passer_teams[:, np.newaxis] == player_teams[np.newaxis, :]  # F x P
+        SECOND_LAST_DEFENDER_NORM_X = np.ma.sort(np.ma.array(PLAYERS_NORM_X, mask=is_attacking_team), axis=1, endwith=False)[::-1][:, -2]
+        X_OFFSIDE_LINE = np.maximum(SECOND_LAST_DEFENDER_NORM_X, BALL_NORM_X)  # F
+
+        PLAYER_IS_OFFSIDE = is_attacking_team & (PLAYERS_NORM_X > X_OFFSIDE_LINE[:, np.newaxis]) & (PLAYERS_NORM_X > 0)  # F x P
+        PLAYER_POS[PLAYER_IS_OFFSIDE, :] = np.nan
 
     ### 1. Calculate ball trajectory
     # 1.1 Calculate spatial grid
@@ -202,8 +219,10 @@ def simulate_passes(
             player_velocity=player_velocity,
         )
 
-    if passers_to_exclude is not None:
-        i_passers_to_exclude = np.array([list(players).index(passer) for passer in passers_to_exclude])
+    if exclude_passer:
+        if passers is None:
+            raise ValueError("'passers' must be provided if 'exclude_passer' is True")
+        i_passers_to_exclude = np.array([list(players).index(passer) for passer in passers])
         i_frames = np.arange(TTA_PLAYERS.shape[0])
         TTA_PLAYERS[i_frames, i_passers_to_exclude, :, :] = np.inf  # F x P x PHI x T
 
@@ -349,7 +368,10 @@ def simulate_passes_chunked(
     passer_teams,
     player_teams,
     players=None,
-    passers_to_exclude=None,
+    passers=None,  # F, frame-wise passer
+    exclude_passer=False,
+    playing_direction=None,
+    respect_offside=False,
     x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
 
     # Options
@@ -390,7 +412,7 @@ def simulate_passes_chunked(
     """
     if chunk_size is None or chunk_size <= 0:
         chunk_size = PLAYER_POS.shape[0]
-    _assert_matrix_consistency(PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_teams, player_teams, players, passers_to_exclude)
+    _assert_matrix_consistency(PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_teams, player_teams, players, passers)
 
     F = PLAYER_POS.shape[0]
 
@@ -409,14 +431,17 @@ def simulate_passes_chunked(
         phi_grid_chunk = phi_grid[i:i_chunk_end, ...]
         v0_grid_chunk = v0_grid[i:i_chunk_end, ...]
         passer_team_chunk = passer_teams[i:i_chunk_end, ...]
-        if passers_to_exclude is not None:
-            passers_to_exclude_chunk = passers_to_exclude[i:i_chunk_end, ...]
+        if passers is not None:
+            passers_chunk = passers[i:i_chunk_end, ...]
         else:
-            passers_to_exclude_chunk = None
+            passers_chunk = None
 
         result = simulate_passes(
             PLAYER_POS_chunk, BALL_POS_chunk, phi_grid_chunk, v0_grid_chunk, passer_team_chunk, player_teams, players,
-            passers_to_exclude_chunk,
+            passers_chunk,
+            exclude_passer,
+            playing_direction,
+            respect_offside,
             fields_to_return,
             x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max,
             pass_start_location_offset,
@@ -489,7 +514,7 @@ def clip_simulation_result_to_pitch(
     """
     Set all data points that are outside the pitch to zero (e.g. for DAS computation)
 
-    >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
+    >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density
     array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
              1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,

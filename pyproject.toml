@@ -61,6 +61,8 @@ dev = [
     "twine",
     "setuptools",
     "tox",
+    "requests",
+    "packaging",
 ]
 
 

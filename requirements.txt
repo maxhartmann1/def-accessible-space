@@ -20,3 +20,5 @@ tox
 netcal
 mplsoccer
 databallpy
+requests
+packaging

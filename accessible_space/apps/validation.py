@@ -256,7 +256,10 @@ def get_kloppy_events(dataset_nr):
 
         df = pd.json_normalize(json_data["data"])
 
-        expanded_df = pd.DataFrame(df['subtypes'].apply(pd.Series))
+        # expanded_df = pd.DataFrame(df['subtypes'].apply(pd.Series))
+        expanded_df = pd.DataFrame(df['subtypes'].apply(
+            lambda x: pd.Series(x, dtype='float64') if x is None or isinstance(x, float) and pd.isna(x) else pd.Series(x)
+        ))
         expanded_df.columns = [f'subtypes.{col}' for col in expanded_df.columns]
 
         new_dfs = []
