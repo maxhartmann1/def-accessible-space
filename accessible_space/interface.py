@@ -13,7 +13,8 @@ from .core import _DEFAULT_PASS_START_LOCATION_OFFSET, _DEFAULT_B0, _DEFAULT_TIM
     _DEFAULT_USE_MAX, _DEFAULT_USE_APPROX_TWO_POINT, _DEFAULT_B1, _DEFAULT_PLAYER_VELOCITY, _DEFAULT_V_MAX, \
     _DEFAULT_KEEP_INERTIAL_VELOCITY, _DEFAULT_INERTIAL_SECONDS, _DEFAULT_TOL_DISTANCE, _DEFAULT_RADIAL_GRIDSIZE, \
     _DEFAULT_V0_PROB_AGGREGATION_MODE, _DEFAULT_NORMALIZE, _DEFAULT_USE_EFFICIENT_SIGMOID, _DEFAULT_FACTOR, \
-    _DEFAULT_FACTOR2, simulate_passes_chunked, clip_simulation_result_to_pitch, integrate_surfaces, SimulationResult
+    _DEFAULT_FACTOR2, _DEFAULT_RESPECT_OFFSIDE, simulate_passes_chunked, clip_simulation_result_to_pitch, \
+    integrate_surfaces, SimulationResult
 from .utility import get_unused_column_name, _dist_to_opp_goal, _opening_angle_to_goal, _adjust_color, _unset, \
     _replace_column_values_except_nans
 
@@ -339,7 +340,7 @@ def get_das_gained(
     tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy",
     tracking_team_in_possession_col="team_in_possession",
     ball_tracking_player_id="ball", tracking_attacking_direction_col=None,
-    tracking_period_col=_unset, tracking_passer_to_exclude_col=None,
+    tracking_period_col=_unset, tracking_player_in_possession_col=None,
 
     # Pitch dimensions
     x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
@@ -347,6 +348,7 @@ def get_das_gained(
     # Options
     infer_attacking_direction=True,
     exclude_passer=False,
+    respect_offside=True,
     use_event_coordinates_as_ball_position=True,
     use_event_team_as_team_in_possession=True,
     danger_weight=_DEFAULT_DANGER_WEIGHT,
@@ -392,13 +394,13 @@ def get_das_gained(
     0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)
     1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0)
     2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0)
-    >>> result = get_das_gained(df_passes, df_tracking, tracking_frame_col="frame_id", event_frame_col="frame_id", event_target_frame_col="target_frame_id", tracking_player_col="player_id", tracking_team_col="team_id", ball_tracking_player_id="ball", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_period_col=None, event_start_x_col="x", event_start_y_col="y", event_team_col="team_id")
+    >>> result = get_das_gained(df_passes, df_tracking, tracking_frame_col="frame_id", event_frame_col="frame_id", event_target_frame_col="target_frame_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_player_in_possession_col="player_in_possession", ball_tracking_player_id="ball", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_period_col=None, event_start_x_col="x", event_start_y_col="y", event_team_col="team_id")
     >>> df_passes["AS_Gained"], df_passes["DAS_Gained"], df_passes["fr_index"], simulation_result = result.as_gained, result.das_gained, result.frame_index, result.simulation_result
     >>> df_passes
        frame_id  target_frame_id player_id receiver_id team_id     x     y  x_target  y_target  pass_outcome receiver_team_id         event_string    AS_Gained  DAS_Gained  fr_index
-    0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)   304.900185  103.738390         0
-    1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0) -3390.236469 -163.740452         1
-    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -3434.305806 -127.494528         2
+    0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)   657.452117   29.500628         0
+    1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0) -3106.024327  -20.786560         1
+    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -2348.313551   -0.158608         2
     """
     _check_presence_of_required_columns(df_passes, "df_passes", ["event_success_col", "event_frame_col", "event_target_frame_col"], [event_success_col, event_frame_col, event_target_frame_col])
     _check_presence_of_required_columns(df_tracking, "df_tracking", ["tracking_frame_col", "tracking_x_col", "tracking_y_col", "tracking_player_col", "tracking_team_col"], [tracking_frame_col, tracking_x_col, tracking_y_col, tracking_player_col, tracking_team_col])
@@ -445,7 +447,7 @@ def get_das_gained(
         x_col=tracking_x_col, y_col=tracking_y_col, vx_col=tracking_vx_col, vy_col=tracking_vy_col,
         team_in_possession_col=tracking_team_in_possession_col, ball_player_id=ball_tracking_player_id,
         attacking_direction_col=tracking_attacking_direction_col, period_col=tracking_period_col,
-        player_in_possession_col=tracking_passer_to_exclude_col,
+        player_in_possession_col=tracking_player_in_possession_col,
         exclude_passer=exclude_passer,
         x_pitch_min=x_pitch_min, x_pitch_max=x_pitch_max, y_pitch_min=y_pitch_min, y_pitch_max=y_pitch_max,
 
@@ -549,7 +551,7 @@ def get_expected_pass_completion(
     chunk_size=150,
     additional_fields_to_return=None,
     use_progress_bar=False,
-    respect_offside=False,
+    respect_offside=_DEFAULT_RESPECT_OFFSIDE,
     infer_attacking_direction=True,
 
     # xC Parameters
@@ -849,21 +851,21 @@ def get_dangerous_accessible_space(
     >>> import accessible_space.tests.resources as res
     >>> df_tracking = res.df_tracking
     >>> df_tracking.head(5)
-       frame_id player_id team_id    x     y   vx    vy team_in_possession  period_id
-    0         0         A    Home -0.1  0.00  0.1  0.05               Home          0
-    1         1         A    Home  0.0  0.05  0.1  0.05               Home          0
-    2         2         A    Home  0.1  0.10  0.1  0.05               Home          0
-    3         3         A    Home  0.2  0.15  0.1  0.05               Home          0
-    4         4         A    Home  0.3  0.20  0.1  0.05               Home          0
-    >>> ret = get_dangerous_accessible_space(df_tracking, frame_col="frame_id", player_col="player_id", team_col="team_id", ball_player_id="ball", x_col="x", y_col="y", vx_col="vx", vy_col="vy", attacking_direction_col="attacking_direction", period_col="period_id", team_in_possession_col="team_in_possession", infer_attacking_direction=True)
+       frame_id player_id team_id    x     y   vx    vy team_in_possession player_in_possession  period_id
+    0         0         A    Home -0.1  0.00  0.1  0.05               Home                    A          0
+    1         1         A    Home  0.0  0.05  0.1  0.05               Home                    A          0
+    2         2         A    Home  0.1  0.10  0.1  0.05               Home                    A          0
+    3         3         A    Home  0.2  0.15  0.1  0.05               Home                    A          0
+    4         4         A    Home  0.3  0.20  0.1  0.05               Home                    A          0
+    >>> ret = get_dangerous_accessible_space(df_tracking, frame_col="frame_id", player_col="player_id", team_col="team_id", ball_player_id="ball", x_col="x", y_col="y", vx_col="vx", vy_col="vy", period_col="period_id", team_in_possession_col="team_in_possession", player_in_possession_col="player_in_possession", infer_attacking_direction=True)
     >>> df_tracking["AS"], df_tracking["DAS"], df_tracking["frame_index"], df_tracking["player_index"] = ret.acc_space, ret.das, ret.frame_index, ret.player_index
     >>> df_tracking.head(5)
-       frame_id player_id team_id    x     y   vx    vy team_in_possession  period_id           AS        DAS  frame_index  player_index
-    0         0         A    Home -0.1  0.00  0.1  0.05               Home          0  3032.436435  38.048069            0           0.0
-    1         1         A    Home  0.0  0.05  0.1  0.05               Home          0  3030.995748  40.105718            1           0.0
-    2         2         A    Home  0.1  0.10  0.1  0.05               Home          0  3021.424520  40.332819            2           0.0
-    3         3         A    Home  0.2  0.15  0.1  0.05               Home          0  3023.307061  42.008610            3           0.0
-    4         4         A    Home  0.3  0.20  0.1  0.05               Home          0  3036.061084  43.128569            4           0.0
+       frame_id player_id team_id    x     y   vx    vy team_in_possession player_in_possession  period_id           AS       DAS  frame_index  player_index
+    0         0         A    Home -0.1  0.00  0.1  0.05               Home                    A          0  2395.149542  0.410518            0           0.0
+    1         1         A    Home  0.0  0.05  0.1  0.05               Home                    A          0  2398.887113  0.416772            1           0.0
+    2         2         A    Home  0.1  0.10  0.1  0.05               Home                    A          0  2399.198243  0.422653            2           0.0
+    3         3         A    Home  0.2  0.15  0.1  0.05               Home                    A          0  2415.192088  0.428884            3           0.0
+    4         4         A    Home  0.3  0.20  0.1  0.05               Home                    A          0  2407.701873  0.425983            4           0.0
     """
     n_v0 = round(n_v0)
     missing_columns = [(parameter_name, col) for parameter_name, col in [("frame_col", frame_col), ("player_col", player_col), ("team_col", team_col), ("x_col", x_col), ("y_col", y_col), ("vx_col", vx_col), ("vy_col", vy_col), ("team_in_possession_col", team_in_possession_col)] if col not in df_tracking.columns]

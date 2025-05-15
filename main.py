@@ -150,4 +150,26 @@ import accessible_space.tests.test_real_world_data
 #
 
 if __name__ == '__main__':
-    accessible_space.tests.test_model.test_offside()
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.expand_frame_repr", False)
+    import accessible_space.tests.resources as res
+    df_passes, df_tracking = res.df_passes.copy(), res.df_tracking.copy()
+    df_passes
+    result = accessible_space.get_das_gained(df_passes, df_tracking, tracking_frame_col="frame_id", event_frame_col="frame_id", event_target_frame_col="target_frame_id", tracking_player_col="player_id", tracking_team_col="team_id", tracking_player_in_possession_col="player_in_possession", ball_tracking_player_id="ball", tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_period_col=None, event_start_x_col="x", event_start_y_col="y", event_team_col="team_id")
+    df_passes["AS_Gained"], df_passes["DAS_Gained"], df_passes["fr_index"], simulation_result = result.as_gained, result.das_gained, result.frame_index, result.simulation_result
+
+    # plot
+    for _, p4ss in df_passes.iterrows():
+        plt.figure(figsize=(10, 6))
+        plt.plot([p4ss["x"], p4ss["x_target"]], [p4ss["y"], p4ss["y_target"]], color="blue", alpha=0.5)
+
+        df_tracking_frame = df_tracking[df_tracking["frame_id"] == p4ss["frame_id"]]
+
+        teams = df_tracking_frame["team_id"].unique()
+        df_tracking_frame["color"] = df_tracking_frame["team_id"].map({team: "red" if team == p4ss["team_id"] else "blue" for team in teams})
+        plt.scatter(df_tracking_frame["x"], df_tracking_frame["y"], color=df_tracking_frame["color"], alpha=1)
+
+        plt.plot([-52.5, -52.5], [-34, 34], color="black", linewidth=2)
+        plt.plot([52.5, 52.5], [-34, 34], color="black", linewidth=2)
+        plt.plot([-52.5, 52.5], [34, 34], color="black", linewidth=2)
+        plt.plot([-52.5, 52.5], [-34, -34], color="black", linewidth=2)

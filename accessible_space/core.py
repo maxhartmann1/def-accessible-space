@@ -81,7 +81,7 @@ def _sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
 
-def _assert_matrix_consistency(PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_team, team_list, players=None, passers_to_exclude=None):
+def _assert_matrix_consistency(PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_team, team_list, players=None, passers=None):
     F = PLAYER_POS.shape[0]
     assert F == BALL_POS.shape[0], f"Dimension F is {F} (from PLAYER_POS: {PLAYER_POS.shape}), but BALL_POS shape is {BALL_POS.shape}"
     assert F == phi_grid.shape[0], f"Dimension F is {F} (from PLAYER_POS: {PLAYER_POS.shape}), but phi_grid shape is {phi_grid.shape}"
@@ -91,8 +91,8 @@ def _assert_matrix_consistency(PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_t
     assert P == team_list.shape[0], f"Dimension P is {P} (from PLAYER_POS: {PLAYER_POS.shape}), but team_list shape is {team_list.shape}"
     assert PLAYER_POS.shape[2] >= 4  # >= or = ?
     assert BALL_POS.shape[1] >= 2  # ...
-    if passers_to_exclude is not None:
-        assert F == passers_to_exclude.shape[0], f"Dimension F is {F} (from PLAYER_POS: {PLAYER_POS.shape}), but passers_to_exclude shape is {passers_to_exclude.shape}"
+    if passers is not None:
+        assert F == passers.shape[0], f"Dimension F is {F} (from PLAYER_POS: {PLAYER_POS.shape}), but passers shape is {passers.shape}"
         assert P == players.shape[0], f"Dimension P is {P} (from PLAYER_POS: {PLAYER_POS.shape}), but players shape is {players.shape}"
 
 
@@ -138,12 +138,14 @@ def simulate_passes(
     # Simulate a pass from player A straight to the right towards a defender B who is 50m away.
     >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density.shape, res.defense_poss_density
-    ((1, 1, 13), array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
-             1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,
-             1.99714902e-01, 1.99720237e-01, 1.99725098e-01, 1.99729544e-01,
-             1.99733627e-01]]]))
+    ((1, 1, 13), array([[[8.89786731e-05, 1.64897230e-04, 1.29669104e-03, 1.94280126e-01,
+             1.91894891e-01, 1.88063562e-01, 1.77544360e-01, 3.89546322e-02,
+             2.01864630e-03, 1.02515215e-04, 5.17596953e-06, 2.60590596e-07,
+             1.30974323e-08]]]))
     >>> res.attack_cum_prob.shape, res.attack_cum_prob  # F x PHI x T
-    ((1, 1, 13), array([[[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]]))
+    ((1, 1, 13), array([[[0.        , 0.01097577, 0.01807728, 0.02306136, 0.02424135,
+             0.02432508, 0.02433268, 0.02433416, 0.02433455, 0.02433456,
+             0.02433456, 0.02433456, 0.02433456]]]))
     >>> res.phi_grid.shape, res.phi_grid
     ((1, 1), array([[0]]))
     >>> res.r_grid.shape, res.r_grid
@@ -409,12 +411,12 @@ def simulate_passes_chunked(
     """
     Execute pass simulation in chunks to avoid OOM.
 
-    >>> res = simulate_passes_chunked(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
+    >>> res = simulate_passes_chunked(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density.shape, res.defense_poss_density
-    ((1, 1, 13), array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
-             1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,
-             1.99714902e-01, 1.99720237e-01, 1.99725098e-01, 1.99729544e-01,
-             1.99733627e-01]]]))
+    ((1, 1, 13), array([[[8.89786731e-05, 1.64897230e-04, 1.29669104e-03, 1.94280126e-01,
+             1.91894891e-01, 1.88063562e-01, 1.77544360e-01, 3.89546322e-02,
+             2.01864630e-03, 1.02515215e-04, 5.17596953e-06, 2.60590596e-07,
+             1.30974323e-08]]]))
     """
     if chunk_size is None or chunk_size <= 0:
         chunk_size = PLAYER_POS.shape[0]
@@ -526,12 +528,12 @@ def clip_simulation_result_to_pitch(
 
     >>> res = simulate_passes(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density
-    array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
-             1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,
-             1.99714902e-01, 1.99720237e-01, 1.99725098e-01, 1.99729544e-01,
-             1.99733627e-01]]])
+    array([[[8.89786731e-05, 1.64897230e-04, 1.29669104e-03, 1.94280126e-01,
+             1.91894891e-01, 1.88063562e-01, 1.77544360e-01, 3.89546322e-02,
+             2.01864630e-03, 1.02515215e-04, 5.17596953e-06, 2.60590596e-07,
+             1.30974323e-08]]])
     >>> clip_simulation_result_to_pitch(res).defense_poss_density
-    array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
+    array([[[8.89786731e-05, 1.64897230e-04, 1.29669104e-03, 1.94280126e-01,
              0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
              0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
              0.00000000e+00]]])
@@ -662,19 +664,19 @@ def as_dangerous_result(result, danger, danger_weight):
     """
     Convert a simulation result to a dangerous simulation result by multiplying density with danger.
 
-    >>> res = simulate_passes_chunked(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers_to_exclude=np.array(["A"]), radial_gridsize=15)
+    >>> res = simulate_passes_chunked(np.array([[[0, 0, 0, 0], [50, 0, 0, 0]]]), np.array([[0, 0]]), np.array([[0]]), np.array([[10]]), np.array([0]), np.array([0, 1]), players=np.array(["A", "B"]), passers=np.array(["A"]), radial_gridsize=15)
     >>> res.defense_poss_density
-    array([[[8.89786731e-05, 1.66724063e-04, 1.32061882e-03, 1.99692115e-01,
-             1.99729539e-01, 1.99695232e-01, 1.99702499e-01, 1.99709019e-01,
-             1.99714902e-01, 1.99720237e-01, 1.99725098e-01, 1.99729544e-01,
-             1.99733627e-01]]])
+    array([[[8.89786731e-05, 1.64897230e-04, 1.29669104e-03, 1.94280126e-01,
+             1.91894891e-01, 1.88063562e-01, 1.77544360e-01, 3.89546322e-02,
+             2.01864630e-03, 1.02515215e-04, 5.17596953e-06, 2.60590596e-07,
+             1.30974323e-08]]])
     >>> danger = np.array([[[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.0, 1.0]]])
     >>> dangerous_res = as_dangerous_result(res, danger, danger_weight=1)
     >>> dangerous_res.defense_poss_density
-    array([[[0.00000000e+00, 1.66724063e-05, 2.64123764e-04, 5.99076346e-02,
-             7.98918155e-02, 9.98476160e-02, 1.19821499e-01, 1.39796313e-01,
-             1.59771922e-01, 1.79748214e-01, 1.99725098e-01, 1.99729544e-01,
-             1.99733627e-01]]])
+    array([[[0.00000000e+00, 1.64897230e-05, 2.59338208e-04, 5.82840377e-02,
+             7.67579563e-02, 9.40317808e-02, 1.06526616e-01, 2.72682426e-02,
+             1.61491704e-03, 9.22636939e-05, 5.17596953e-06, 2.60590596e-07,
+             1.30974323e-08]]])
     """
     def weighted_multiplication(_danger, _space, weight=danger_weight):
         return (_danger ** (1 / weight)) * _space if weight is not None else _danger * _space

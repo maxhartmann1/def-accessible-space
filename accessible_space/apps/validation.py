@@ -1720,8 +1720,8 @@ def validation_dashboard(dummy=False, run_asserts=False):
     np.random.seed(SEED)
     random.seed(343431)
 
-    do_das = st.toggle("Validate DAS", value=False)
-    do_benchmark = st.toggle("Validate DAS against benchmark", value=False)
+    do_das = st.toggle("Validate DAS", value=True)
+    do_benchmark = st.toggle("Validate DAS against benchmark", value=True)
 
     ### DAS vs x_norm
     # for df_tracking, df_event in zip(dfs_tracking, dfs_event):
