@@ -49,6 +49,7 @@ _DEFAULT_NORMALIZE = False
 _DEFAULT_PASS_START_LOCATION_OFFSET = -1.5245340256423476
 _DEFAULT_PLAYER_VELOCITY = 34.6836072667285
 _DEFAULT_RADIAL_GRIDSIZE = 5.034759576558597
+_DEFAULT_RESPECT_OFFSIDE = False
 _DEFAULT_TIME_OFFSET_BALL = -0.4384754490159207
 _DEFAULT_TOL_DISTANCE = 9.986761680941445
 _DEFAULT_USE_APPROX_TWO_POINT = True
@@ -179,7 +180,12 @@ def simulate_passes(
         SECOND_LAST_DEFENDER_NORM_X = np.ma.sort(np.ma.array(PLAYERS_NORM_X, mask=is_attacking_team), axis=1, endwith=False)[::-1][:, -2]
         X_OFFSIDE_LINE = np.maximum(SECOND_LAST_DEFENDER_NORM_X, BALL_NORM_X)  # F
 
-        PLAYER_IS_OFFSIDE = is_attacking_team & (PLAYERS_NORM_X > X_OFFSIDE_LINE[:, np.newaxis]) & (PLAYERS_NORM_X > 0)  # F x P
+        PLAYER_IS_OFFSIDE = is_attacking_team & (PLAYERS_NORM_X > X_OFFSIDE_LINE[:, np.newaxis]) & (PLAYERS_NORM_X > 0)
+
+        if passers is not None:
+            player_is_passer = passers[:, np.newaxis] == players[np.newaxis, :]  # F x P
+            PLAYER_IS_OFFSIDE = PLAYER_IS_OFFSIDE & (~player_is_passer)  # F x P
+
         PLAYER_POS[PLAYER_IS_OFFSIDE, :] = np.nan
 
     ### 1. Calculate ball trajectory
@@ -376,7 +382,7 @@ def simulate_passes_chunked(
 
     # Options
     use_progress_bar=True,
-    chunk_size=50,
+    chunk_size=150,
     fields_to_return=ALL_OPTIONAL_FIELDS_TO_RETURN,
 
     # Model parameters
@@ -435,12 +441,16 @@ def simulate_passes_chunked(
             passers_chunk = passers[i:i_chunk_end, ...]
         else:
             passers_chunk = None
+        if playing_direction is not None:
+            playing_direction_chunk = playing_direction[i:i_chunk_end, ...]
+        else:
+            playing_direction_chunk = None
 
         result = simulate_passes(
             PLAYER_POS_chunk, BALL_POS_chunk, phi_grid_chunk, v0_grid_chunk, passer_team_chunk, player_teams, players,
             passers_chunk,
             exclude_passer,
-            playing_direction,
+            playing_direction_chunk,
             respect_offside,
             fields_to_return,
             x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max,

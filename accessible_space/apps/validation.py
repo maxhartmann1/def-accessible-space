@@ -47,6 +47,8 @@ st.write(rng.bit_generator.state)
 print(rng.bit_generator.state)
 assert rng.bit_generator.state == {'bit_generator': 'PCG64', 'state': {'state': 87410119717072287666137457930238493692, 'inc': 60341604818905247986700519057288636087}, 'has_uint32': 0, 'uinteger': 0}
 
+plt.close()
+gc.collect()
 
 from accessible_space.utility import get_unused_column_name, progress_bar
 from accessible_space.interface import per_object_frameify_tracking_data, get_expected_pass_completion, \
@@ -56,7 +58,7 @@ from accessible_space.core import _DEFAULT_PASS_START_LOCATION_OFFSET, _DEFAULT_
     _DEFAULT_USE_MAX, _DEFAULT_USE_APPROX_TWO_POINT, _DEFAULT_B1, _DEFAULT_PLAYER_VELOCITY, _DEFAULT_V_MAX, \
     _DEFAULT_KEEP_INERTIAL_VELOCITY, _DEFAULT_INERTIAL_SECONDS, _DEFAULT_TOL_DISTANCE, _DEFAULT_RADIAL_GRIDSIZE, \
     _DEFAULT_V0_PROB_AGGREGATION_MODE, _DEFAULT_NORMALIZE, _DEFAULT_USE_EFFICIENT_SIGMOID, _DEFAULT_FACTOR, \
-    _DEFAULT_FACTOR2
+    _DEFAULT_FACTOR2, _DEFAULT_RESPECT_OFFSIDE
 
 
 cache_dir = os.path.join(os.path.dirname(__file__), ".joblib-cache")
@@ -67,24 +69,22 @@ metrica_open_data_base_dir = "https://raw.githubusercontent.com/metrica-sports/s
 PARAMETER_BOUNDS = {
     # Core simulation model
     "pass_start_location_offset": [-3, 3],
-    "time_offset_ball": [-3, 3],  # very small and negative values can lead to artifacts around the passer (bc passer cannot reach the ball), also in conjunction with location offset
+    "time_offset_ball": [-3, 3],
     "radial_gridsize": [3, 7],
     "b0": [-5, 5],
     "b1": [-200, 0],
-    "player_velocity": [2, 50],
+    "player_velocity": [5, 40],
     "keep_inertial_velocity": [True],
     "use_max": [False, True],
     "v_max": [5, 40],
-    "a_max": [10, 45],
+    "a_max": [5, 20],
     "inertial_seconds": [0.0, 1.5],  # , True],
-    "tol_distance": [0, 25],
+    "tol_distance": [0, 15],
     "use_approx_two_point": [False, True],
     "v0_prob_aggregation_mode": ["mean", "max"],
-    # "normalize": [False, True],
     "normalize": [False, True],
+    "respect_offside": [False, True],
     "use_efficient_sigmoid": [False, True],
-    # "use_efficient_sigmoid": [True],
-    # "factor": [0.0001, 20],
     "factor": [0.0001, 3],
     "factor2": [-2, 2],
 
@@ -107,8 +107,127 @@ PREFIT_PARAMS = {"a_max": _DEFAULT_A_MAX, "b0": _DEFAULT_B0, "b1": _DEFAULT_B1,
                  "player_velocity": _DEFAULT_PLAYER_VELOCITY, "radial_gridsize": _DEFAULT_RADIAL_GRIDSIZE,
                  "time_offset_ball": _DEFAULT_TIME_OFFSET_BALL, "tol_distance": _DEFAULT_TOL_DISTANCE,
                  "use_approx_two_point": _DEFAULT_USE_APPROX_TWO_POINT, "use_efficient_sigmoid": _DEFAULT_USE_EFFICIENT_SIGMOID, "use_fixed_v0": _DEFAULT_USE_FIXED_V0_FOR_XC, "use_max": _DEFAULT_USE_MAX,
+                 "respect_offside": _DEFAULT_RESPECT_OFFSIDE,
                  "use_poss": _DEFAULT_USE_POSS_FOR_XC, "v0_max": _DEFAULT_V0_MAX_FOR_XC, "v0_min": _DEFAULT_V0_MIN_FOR_XC,
                  "v0_prob_aggregation_mode": _DEFAULT_V0_PROB_AGGREGATION_MODE, "v_max": _DEFAULT_V_MAX}
+
+
+def eval_benchmark():
+    url = f"https://api.github.com/repos/EAISI/OJN-EPV-benchmark/contents/OJN-Pass-EPV-benchmark"
+
+    response = requests.get(url)
+    files = response.json()
+    import accessible_space
+    # Iterate over the files and print file names
+    data = []
+    for dir_nr, dir in accessible_space.progress_bar(enumerate(files), total=len(files), desc="Loading files"):
+        dir = dir["name"]
+        datapoint = {}
+        file_mod = f"https://raw.githubusercontent.com/EAISI/OJN-EPV-benchmark/refs/heads/main/OJN-Pass-EPV-benchmark/{dir}/modification.csv"
+        df_mod = pd.read_csv(file_mod, encoding="utf-8")
+        higher_state = df_mod["higher_state_id"].iloc[0]
+        datapoint["higher_state"] = df_mod["higher_state_id"].iloc[0]
+        cols = st.columns(2)
+
+        index2df = {}
+
+        for index in [1, 2]:
+            file_gamestate = f"https://raw.githubusercontent.com/EAISI/OJN-EPV-benchmark/refs/heads/main/OJN-Pass-EPV-benchmark/{dir}/game_state_{index}.csv"
+            df = pd.read_csv(file_gamestate, encoding="utf-8")
+
+            player2team = df[['player', 'team']].drop_duplicates().set_index('player').to_dict()['team']
+            assert len(set(df["event_player"])) == 1
+            event_player = df["event_player"].iloc[0]
+            event_team = player2team[event_player]
+            df["team_in_possession"] = event_team
+            df["frame_id"] = 0
+            df["playing_direction_event"] = df["playing_direction_event"].map({True: 1, False: -1})
+
+            passer_x = df[df["player"] == event_player]["pos_x"].iloc[0]
+            passer_y = df[df["player"] == event_player]["pos_y"].iloc[0]
+
+            ret = accessible_space.get_dangerous_accessible_space(
+                df, frame_col='frame_id', player_col='player', team_col='team', x_col='pos_x', y_col='pos_y',
+                vx_col='smooth_x_speed', vy_col='smooth_y_speed', team_in_possession_col="team_in_possession",
+                period_col=None, ball_player_id=0, attacking_direction_col="playing_direction_event",
+                infer_attacking_direction=False, player_in_possession_col="event_player",
+            )
+            das = ret.das.iloc[0]
+            acc_space = ret.acc_space.iloc[0]
+
+            datapoint[f"as_{index}"] = acc_space
+            datapoint[f"das_{index}"] = das
+
+            plt.figure()
+            df["team_is_in_possession"] = df["team"] == df["team_in_possession"]
+            df["team_is_ball"] = df["player"] == 0
+            df["team_is_defending"] = (df["team"] != df["team_in_possession"]) & ~df["team_is_ball"]
+            df["color"] = df["team_is_in_possession"].map({True: "red", False: "blue"})
+            df["color"] = df["color"].where(~df["team_is_ball"], "black")
+            plt.scatter(df["pos_x"], df["pos_y"], c=df["color"], cmap="viridis", alpha=1)
+
+            # plot the passer extra
+            plt.scatter(passer_x, passer_y, c="orange", marker="x", s=10, label="Passer")
+
+            # plot velocities
+            for i, row in df.iterrows():
+                plt.arrow(row["pos_x"], row["pos_y"], row["smooth_x_speed"], row["smooth_y_speed"],
+                          head_width=0.5, head_length=0.5, fc='black', ec='black', alpha=1)
+
+            plt.xlim(-52.5, 52.5)
+            plt.plot([0, 0], [-34, 34], color="black", linewidth=2)
+            plt.ylim(-34, 34)
+            # accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, color="blue")
+            accessible_space.plot_expected_completion_surface(ret.dangerous_result, 0, color="red")
+            cols[index-1].write(f"{index}, {df['playing_direction_event'].iloc[0]}, {higher_state=}, {das=}, {acc_space=}")
+            cols[index-1].write(plt.gcf())
+            cols[index-1].write(f"DAS: {das}m^2, DAS: {acc_space}m^2")
+
+            plt.close()
+
+            index2df[index] = df
+
+        # check if dfs only differ by z coordinate of the ball
+        index2df[1]["pos_z"] = None
+        index2df[2]["pos_z"] = None
+
+        # check if the two dataframes are equal
+        if index2df[1].equals(index2df[2]):
+            datapoint["differs_only_by_z"] = True
+        else:
+            datapoint["differs_only_by_z"] = False
+
+        st.write(f"{higher_state=}")
+        st.write("-----")
+
+        # st.stop()
+        data.append(datapoint)
+
+    df = pd.DataFrame(data)
+
+    def is_correct(row):
+        if row["higher_state"] == 1:
+            return row["das_1"] > row["das_2"]
+        elif row["higher_state"] == 2:
+            return row["das_1"] < row["das_2"]
+        else:
+            raise ValueError(f"Unknown higher state: {row['higher_state']}")
+
+    df["correct"] = df.apply(lambda row: is_correct(row), axis=1)
+    st.write("df")
+    st.write(df)
+
+    mean_correct = df["correct"].mean()
+
+    mean_correct_not_only_differs_by_z = df[df["differs_only_by_z"] == False]["correct"].mean()
+
+    st.write("mean_correct")
+    st.write(mean_correct)
+
+    st.write("mean_correct_not_only_differs_by_z")
+    st.write(mean_correct_not_only_differs_by_z)
+
+    return mean_correct, mean_correct_not_only_differs_by_z
 
 
 def bootstrap_metric_ci(y_true, y_pred, fnc, n_iterations, conf_level=0.95, **kwargs):
@@ -911,6 +1030,8 @@ def plot_pass(p4ss, df_tracking, add_legend=True, add_as=False, add_das=False, f
     # plt.title(f"Pass: {p4ss['success']}")
 
     df_frame = df_tracking[df_tracking["frame_id"] == p4ss["frame_id"]].copy()
+    df_frame["ball_owning_team_id"] = p4ss["team_id"]
+
 
     red_color = "#ff6666"
     red_color_pass = "#b30000"
@@ -934,8 +1055,13 @@ def plot_pass(p4ss, df_tracking, add_legend=True, add_as=False, add_das=False, f
 
         das = get_dangerous_accessible_space(
             df_frame, team_in_possession_col="ball_owning_team_id", period_col=None,
-            radial_gridsize=1, n_v0=200, n_angles=120,  # increase resolution for this plot
+            n_v0=150, radial_gridsize=1.83, n_angles=40,
         )
+        # 1.3419858566843872	3749.9871613033556
+        df_frame["DAS"] = das.das
+        df_frame["AS"] = das.acc_space
+        st.write(df_frame)
+
         if add_das:
             plot_expected_completion_surface(das.dangerous_result, color="red", plot_gridpoints=False)
         if add_as:
@@ -1047,6 +1173,9 @@ def simulate_parameters(df_training, dfs_tracking, use_prefit, add_confidence_in
         else:
             parameter_assignment = _choose_random_parameters(PARAMETER_BOUNDS)
 
+    assert "respect_offside" in PREFIT_PARAMS
+    assert "respect_offside" in parameter_assignment
+
     data_simres = {
         "xc": [],
         "success": [],
@@ -1066,6 +1195,7 @@ def simulate_parameters(df_training, dfs_tracking, use_prefit, add_confidence_in
             ball_tracking_player_id="ball",
             tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_v_col="v",
             tracking_team_in_possession_col="ball_possession",
+            tracking_period_col="period_id",
 
             n_frames_after_pass_for_v0=5, fallback_v0=10,
             chunk_size=chunk_size,
@@ -1110,18 +1240,59 @@ def validate_multiple_matches(
     def frag_plot_das():
         if not st.toggle("frag_plot_das", value=True):
             return
+
         dataset_nr = st.number_input("Dataset nr", value=0, min_value=0, max_value=len(dfs_tracking) - 1, key="frag_plot_das2")
+        # default_frame = 48767  # 7404
         default_frame = 7404
         frames = dfs_tracking[dataset_nr]["frame_id"].unique().tolist()
-        frame = st.selectbox("Frame", frames, key="frag_plot_das", index=frames.index(default_frame))
+        frame = st.selectbox("Frame", frames, key="frag_plot_das", index=frames.index(default_frame) if default_frame in frames else frames[0])
+        flip = st.checkbox("Flip", True)
+
+        # flip_x = st.checkbox("Flip X (breaks data!)", False)
+        # if flip_x:
+        #     dfs_tracking[dataset_nr]["x"] *= -1
+        #     dfs_tracking[dataset_nr]["vx"] *= -1
 
         teams = dfs_tracking[dataset_nr]["team_id"].dropna().unique()
         selected_team = st.selectbox("Team", teams, key="frag_plot_das3")
 
+        plot_all_passes = st.checkbox("All passes", False)
+        if plot_all_passes :
+            for add_legend in [False, True]:
+                for pass_nr, (_, p4ss) in enumerate(dfs_passes[dataset_nr].iloc[183+24:].iterrows()):
+                    st.write(f"{pass_nr=}")
+                    try:
+                        plot_pass(p4ss, dfs_tracking[dataset_nr], add_legend=add_legend,
+                                  legend_loc="lower left", add_as=True, add_das=False, flip=False,
+                                  use_green_background=False,
+                                  legend_bbox_to_anchor=(0.05, 0.0), add_pass_to_legend=False)
+                    except AssertionError as e:
+                        pass
+                    plt.close()
+
         for das in ["as", "das"]:
-            plot_pass({"frame_id": frame, "team_id": selected_team}, dfs_tracking[dataset_nr], add_legend=True,
-                      legend_loc="lower left", add_as=das == "as", add_das=das == "das", flip=True, use_green_background=False,
+            plot_pass({"frame_id": frame, "team_id": selected_team}, dfs_tracking[dataset_nr], add_legend=False,
+                      legend_loc="lower left", add_as=das == "as", add_das=das == "das", flip=flip, use_green_background=False,
                       legend_bbox_to_anchor=(0.05, 0.0), add_pass_to_legend=False)
+
+        return
+
+    if run_asserts:
+        p4ss = dfs_passes[0][dfs_passes[0]["frame_id"] == 7404].iloc[0]
+        df_frame = dfs_tracking[0][dfs_tracking[0]["frame_id"] == p4ss["frame_id"]].copy()
+        df_frame["ball_owning_team_id"] = p4ss["team_id"]
+        df_frame["x"] = -df_frame["x"]
+        df_frame["y"] = -df_frame["y"]
+        df_frame["vx"] = -df_frame["vx"]
+        df_frame["vy"] = -df_frame["vy"]
+        das = get_dangerous_accessible_space(
+            df_frame, team_in_possession_col="ball_owning_team_id", period_col=None, n_v0=150, radial_gridsize=1.83,
+            n_angles=40,
+        )
+        df_frame["DAS"] = das.das
+        df_frame["AS"] = das.acc_space
+        assert round(das.das.iloc[0], 2) == 1.34
+        assert round(das.acc_space.iloc[0], 0) == 3750
 
     frag_plot_das()
 
@@ -1131,7 +1302,7 @@ def validate_multiple_matches(
     max_workers = st.number_input("Max workers", value=4, min_value=1, max_value=None)
 
     ## Add synthetic passes
-    # @st.cache_resource
+    @st.cache_resource  # REMOVE FOR REPRO
     def _get_dfs_passes_with_synthetic():
         dfs_passes_with_synthetic = []
         for df_tracking, df_passes in progress_bar(zip(dfs_tracking, dfs_passes)):
@@ -1405,6 +1576,8 @@ def validate_multiple_matches(
             event_player_col="player_id", tracking_player_col="player_id", tracking_team_col="team_id",
             ball_tracking_player_id="ball",
             tracking_team_in_possession_col="ball_possession",
+            tracking_period_col="period_id",
+
             tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_v_col="v",
             n_frames_after_pass_for_v0=5, fallback_v0=10, chunk_size=chunk_size,
 
@@ -1547,14 +1720,22 @@ def validation_dashboard(dummy=False, run_asserts=False):
     np.random.seed(SEED)
     random.seed(343431)
 
-    do_das = st.toggle("Validate DAS", value=True)
-
-    dfs_tracking, dfs_event = get_metrica_data(dummy=dummy)
+    do_das = st.toggle("Validate DAS", value=False)
+    do_benchmark = st.toggle("Validate DAS against benchmark", value=False)
 
     ### DAS vs x_norm
     # for df_tracking, df_event in zip(dfs_tracking, dfs_event):
     #     das_vs_xnorm(df_tracking, df_event)
     #     break
+
+    if do_benchmark:
+        with st.expander("Benchmark"):
+            mean_correct, mean_correct_not_only_differs_by_z = eval_benchmark()
+            if run_asserts:
+                assert mean_correct == 0.74
+                assert round(mean_correct_not_only_differs_by_z, 3) == 0.804
+
+    dfs_tracking, dfs_event = get_metrica_data(dummy=dummy)
 
     ### Validation
     dfs_passes = []
@@ -1590,13 +1771,18 @@ def validation_dashboard(dummy=False, run_asserts=False):
         for _, p4ss in df_passes.iloc[:1].iterrows():
             plot_pass(p4ss, df_tracking)
 
+    np.random.seed(SEED)
+    random.seed(343431)
 
     if do_das:
         df_passes, target_density_success, target_density_fail = validate_das(dfs_tracking, dfs_passes)
         if run_asserts:
-            assert round(target_density_fail, 3) == 0.427
-            assert round(target_density_success, 3) == 0.882
+            assert round(target_density_fail, 3) == 0.346
+            assert round(target_density_success, 3) == 0.843
             st.markdown('<div id="done-flag">DONE 1</div>', unsafe_allow_html=True)
+
+    np.random.seed(SEED)
+    random.seed(343431)
 
     n_steps = st.number_input("Number of simulations", value=25000)
     use_prefit = st.checkbox("Use prefit parameters", value=True)
@@ -1620,7 +1806,7 @@ def validation_dashboard(dummy=False, run_asserts=False):
 
     assert rng.bit_generator.state == {'bit_generator': 'PCG64', 'state': {'state': 286257635543766940493387507884471841288, 'inc': 60341604818905247986700519057288636087}, 'has_uint32': 1, 'uinteger': 1775787077}
 
-    return df_test_scores, biggest_xc_in_test_set, avg_xc_total_only_success_test, avg_xc_total_only_failure_test, target_density_success, target_density_fail
+    return df_test_scores, biggest_xc_in_test_set, avg_xc_total_only_success_test, avg_xc_total_only_failure_test, target_density_success, target_density_fail, mean_correct, mean_correct_not_only_differs_by_z
 
 
 def validate_das(dfs_tracking, dfs_passes):
@@ -1629,11 +1815,13 @@ def validate_das(dfs_tracking, dfs_passes):
         st.write("1")
         df_passes = dfs_passes[dataset_nr]
         df_tracking = dfs_tracking[dataset_nr]
+        st.write("df_tracking")
+        st.write(df_tracking.head())
         das_result = get_das_gained(df_passes, df_tracking, event_success_col="success",
                                     event_target_frame_col="end_frame_id", event_start_x_col="coordinates_x",
                                     event_start_y_col="coordinates_y", event_target_x_col="end_coordinates_x",
                                     event_target_y_col="end_coordinates_y", tracking_period_col="period_id",
-                                    )  # default -> 0.7603557334416071 mean, 0.7106466261420992
+                                    )
         return das_result
 
     dfs = []

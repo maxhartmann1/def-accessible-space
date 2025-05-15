@@ -28,7 +28,6 @@ _DEFAULT_N_V0_FOR_XC = 13.751097117532021
 # Adjust some DAS parameters to allow inclusion of the passer (pass as a "quasi-carry") and reduce high pass hedging
 _DEFAULT_B0_FOR_DAS = _DEFAULT_B0
 _DEFAULT_B1_FOR_DAS = -2000
-# _DEFAULT_B1_FOR_DAS = _DEFAULT_B1
 _DEFAULT_PASS_START_LOCATION_OFFSET_FOR_DAS = 0
 _DEFAULT_TIME_OFFSET_BALL_FOR_DAS = 0
 _DEFAULT_TOL_DISTANCE_FOR_DAS = 5
@@ -36,9 +35,9 @@ _DEFAULT_PLAYER_VELOCITY_FOR_DAS = 9
 _DEFAULT_KEEP_INERTIAL_VELOCITY_FOR_DAS = _DEFAULT_KEEP_INERTIAL_VELOCITY
 _DEFAULT_A_MAX_FOR_DAS = _DEFAULT_A_MAX
 _DEFAULT_V_MAX_FOR_DAS = _DEFAULT_V_MAX
-_DEFAULT_USE_MAX_FOR_DAS = True
+_DEFAULT_USE_MAX_FOR_DAS = False
 _DEFAULT_USE_APPROX_TWO_POINT_FOR_DAS = _DEFAULT_USE_APPROX_TWO_POINT
-_DEFAULT_INERTIAL_SECONDS_FOR_DAS = 0.07  # _DEFAULT_INERTIAL_SECONDS
+_DEFAULT_INERTIAL_SECONDS_FOR_DAS = 0.17
 _DEFAULT_V0_PROB_AGGREGATION_MODE_FOR_DAS = _DEFAULT_V0_PROB_AGGREGATION_MODE
 _DEFAULT_NORMALIZE_FOR_DAS = True
 _DEFAULT_USE_EFFICIENT_SIGMOID_FOR_DAS = _DEFAULT_USE_EFFICIENT_SIGMOID
@@ -351,7 +350,7 @@ def get_das_gained(
     use_event_coordinates_as_ball_position=True,
     use_event_team_as_team_in_possession=True,
     danger_weight=_DEFAULT_DANGER_WEIGHT,
-    chunk_size=20,
+    chunk_size=150,
     return_cropped_result=False,
     use_progress_bar=True,
     additional_fields_to_return=None,
@@ -439,16 +438,14 @@ def get_das_gained(
         df_tracking_passes_and_receptions[tracking_team_in_possession_col] = None
         df_tracking_passes_and_receptions = _replace_column_values_except_nans(df_tracking_passes_and_receptions, unique_frame_col, tracking_team_in_possession_col, df_passes, unique_frame_col, event_team_col)
         df_tracking_passes_and_receptions = _replace_column_values_except_nans(df_tracking_passes_and_receptions, unique_frame_col, tracking_team_in_possession_col, df_passes, unique_frame_reception_col, event_receiver_team_col)
-    import streamlit as st
-    st.write("exclude_passer")
-    st.write(exclude_passer)
+
     ret = get_dangerous_accessible_space(
         df_tracking_passes_and_receptions,
         frame_col=unique_frame_col, player_col=tracking_player_col, team_col=tracking_team_col,
         x_col=tracking_x_col, y_col=tracking_y_col, vx_col=tracking_vx_col, vy_col=tracking_vy_col,
         team_in_possession_col=tracking_team_in_possession_col, ball_player_id=ball_tracking_player_id,
         attacking_direction_col=tracking_attacking_direction_col, period_col=tracking_period_col,
-        passer_col=tracking_passer_to_exclude_col,
+        player_in_possession_col=tracking_passer_to_exclude_col,
         exclude_passer=exclude_passer,
         x_pitch_min=x_pitch_min, x_pitch_max=x_pitch_max, y_pitch_min=y_pitch_min, y_pitch_max=y_pitch_max,
 
@@ -538,6 +535,8 @@ def get_expected_pass_completion(
     tracking_team_col="team_id",
     tracking_x_col="x", tracking_y_col="y", tracking_vx_col="vx", tracking_vy_col="vy", tracking_v_col=None,
     tracking_team_in_possession_col=None,
+    tracking_attacking_direction_col=None,
+    tracking_period_col=_unset,
     ball_tracking_player_id="ball",
 
     # Pitch dimensions
@@ -547,9 +546,11 @@ def get_expected_pass_completion(
     clip_to_pitch=True,  # Whether to calculate xC as aggregated interception probability at the pitch boundary or at the end of the simulation (beyond pitch boundary)
     use_event_coordinates_as_ball_position=True,
     use_event_team_as_team_in_possession=True,
-    chunk_size=20,
+    chunk_size=150,
     additional_fields_to_return=None,
     use_progress_bar=False,
+    respect_offside=False,
+    infer_attacking_direction=True,
 
     # xC Parameters
     n_frames_after_pass_for_v0=5,
@@ -626,6 +627,11 @@ def get_expected_pass_completion(
     if not set(df_passes[event_frame_col]).issubset(set(df_tracking[tracking_frame_col])):
         raise ValueError(f"Pass frames are not present in tracking data: {set(df_passes[event_frame_col])} not subset of {set(df_tracking[tracking_frame_col])}")
 
+    if tracking_period_col == _unset and respect_offside:
+        if infer_attacking_direction:
+            raise ValueError("Inferring attacking direction but 'period_col' is unset. If you have data across multiple halfs, specify 'period_col', otherwise pass 'period_col'=None.")
+        tracking_period_col = None
+
     df_tracking = df_tracking.copy()
     df_passes = df_passes.copy()
 
@@ -654,6 +660,27 @@ def get_expected_pass_completion(
         ball_player_id=ball_tracking_player_id, team_col=tracking_team_col, x_col=tracking_x_col, y_col=tracking_y_col,
         vx_col=tracking_vx_col, vy_col=tracking_vy_col, controlling_team_col=tracking_team_in_possession_col,
     )
+
+    # Get attacking direction
+    if respect_offside:
+        if infer_attacking_direction and tracking_attacking_direction_col is not None:
+            warnings.warn("'tracking_attacking_direction_col' is specified, thus 'infer_attacking_direction' is ignored.")
+        if infer_attacking_direction and tracking_attacking_direction_col is None:
+            tracking_attacking_direction_col = get_unused_column_name(df_tracking_passes.columns, "attacking_direction")
+            df_tracking_passes.loc[df_tracking_passes[tracking_player_col] == ball_tracking_player_id, tracking_team_col] = None
+            df_tracking_passes[tracking_attacking_direction_col] = infer_playing_direction(
+                df_tracking_passes, team_col=tracking_team_col, period_col=tracking_period_col,
+                team_in_possession_col=tracking_team_in_possession_col, x_col=tracking_x_col, ball_team=None,
+            )
+        if tracking_attacking_direction_col is not None:
+            fr2playingdirection = df_tracking_passes[[unique_frame_col, tracking_attacking_direction_col]].set_index(unique_frame_col).to_dict()[tracking_attacking_direction_col]
+            ATTACKING_DIRECTION = np.array([fr2playingdirection[frame] for frame in unique_frame_to_index])  # F
+        else:
+            F = PLAYER_POS.shape[0]
+            ATTACKING_DIRECTION = np.ones(F)  # if no attacking direction is given and we didn't infer it, we assume always left-to-right
+            warnings.warn("Neither 'attacking_direction_col' nor 'infer_attacking_direction' are specified, thus we assume always left-to-right to calculate danger and DAS")
+    else:
+        ATTACKING_DIRECTION = None
 
     # 2. Add v0 to passes
     if event_v0_col is None:
@@ -693,6 +720,8 @@ def get_expected_pass_completion(
         PLAYER_POS, BALL_POS, phi_grid, v0_grid, passer_teams, player_teams, players,
         passers=passers,
         exclude_passer=exclude_passer,
+        respect_offside=respect_offside,
+        playing_direction=ATTACKING_DIRECTION,
 
         use_progress_bar=use_progress_bar,
         fields_to_return=fields_to_return,
@@ -771,7 +800,7 @@ def get_dangerous_accessible_space(
     # Tracking schema
     frame_col="frame_id", player_col="player_id", ball_player_id="ball", team_col="team_id", x_col="x",
     y_col="y", vx_col="vx", vy_col="vy", attacking_direction_col=None, period_col=_unset,
-    team_in_possession_col="team_in_possession", passer_col=None,
+    team_in_possession_col="team_in_possession", player_in_possession_col=None,
 
     # Pitch coordinate system
     x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
@@ -781,7 +810,7 @@ def get_dangerous_accessible_space(
     exclude_passer=False,
     respect_offside=True,
     danger_weight=_DEFAULT_DANGER_WEIGHT,
-    chunk_size=20,
+    chunk_size=150,
     return_cropped_result=False,
     additional_fields_to_return=None,
     use_progress_bar=True,
@@ -855,9 +884,11 @@ def get_dangerous_accessible_space(
         vx_col=vx_col, vy_col=vy_col, controlling_team_col=team_in_possession_col,
     )
     F = PLAYER_POS.shape[0]
-    if passer_col is not None:
-        PASSERS = df_tracking.drop_duplicates(frame_col)[passer_col].values  # F
+    if player_in_possession_col is not None:
+        PASSERS = df_tracking.drop_duplicates(frame_col)[player_in_possession_col].values  # F
     else:
+        if respect_offside:
+            warnings.warn("If 'respect_offside' is set to True, 'passer_col' should be set to the column containing the passer, otherwise ball carrier might be identified as offside.")
         PASSERS = None
     # if exclude_passer:
     #     if passer_col not in df_tracking.columns:
@@ -971,7 +1002,7 @@ def get_individual_dangerous_accessible_space(
     exclude_passer=False,
     respect_offside=True,
     danger_weight=_DEFAULT_DANGER_WEIGHT,
-    chunk_size=20,
+    chunk_size=150,
     return_cropped_result=False,
     additional_fields_to_return=None,
     use_progress_bar=True,
