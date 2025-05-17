@@ -5,7 +5,7 @@
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Fdemo.ipynb)
 ![License](https://img.shields.io/github/license/jonas-bischofberger/accessible-space)
 
-This is a provider-agnostic and easy-to-use implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics.
+This is a provider-agnostic implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics.
 Based on physical pass simulations, DAS quantifies threatening areas that a team can access by a pass.
 You can use DAS to analyze profound aspects of performance like:
 

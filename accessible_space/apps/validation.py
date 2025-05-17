@@ -24,7 +24,6 @@ import concurrent.futures
 import matplotlib.patches
 
 import mplsoccer
-import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -64,9 +63,6 @@ from accessible_space.core import _DEFAULT_PASS_START_LOCATION_OFFSET, _DEFAULT_
     _DEFAULT_V0_PROB_AGGREGATION_MODE, _DEFAULT_NORMALIZE, _DEFAULT_USE_EFFICIENT_SIGMOID, _DEFAULT_FACTOR, \
     _DEFAULT_FACTOR2, _DEFAULT_RESPECT_OFFSIDE
 
-
-cache_dir = os.path.join(os.path.dirname(__file__), ".joblib-cache")
-memory = joblib.Memory(verbose=0)
 
 metrica_open_data_base_dir = "https://raw.githubusercontent.com/metrica-sports/sample-data/refs/heads/master/data"
 
@@ -289,7 +285,6 @@ def bootstrap_auc_ci(y_true, y_pred, n_iterations, conf_level=0.95):
     return bootstrap_metric_ci(y_true, y_pred, error_handled_auc, n_iterations, conf_level)
 
 
-@memory.cache
 def get_metrica_tracking_data(dataset_nr, limit=None):
     dataset = kloppy.metrica.load_open_data(dataset_nr, limit=None)
     df_tracking = dataset.to_df()
@@ -1814,7 +1809,7 @@ def validation_dashboard(dummy=False, run_asserts=True):
 
 
 def validate_das(dfs_tracking, dfs_passes):
-    @memory.cache
+    @st.cache_resource
     def _get_das_of_dataset(dataset_nr):
         st.write("1")
         df_passes = dfs_passes[dataset_nr]
