@@ -1,5 +1,6 @@
 import collections
 import gc
+import warnings
 
 import numpy as np
 import scipy.integrate
@@ -188,7 +189,10 @@ def simulate_passes(
             player_is_passer = passers[:, np.newaxis] == players[np.newaxis, :]  # F x P
             PLAYER_IS_OFFSIDE = PLAYER_IS_OFFSIDE & (~player_is_passer)  # F x P
 
-        PLAYER_POS[PLAYER_IS_OFFSIDE, :] = np.nan
+        try:
+            PLAYER_POS[PLAYER_IS_OFFSIDE, :] = np.nan
+        except ValueError:
+            warnings.warn("Offside not properly detectable, maybe too few defenders. Ignoring offside.")
 
     ### 1. Calculate ball trajectory
     # 1.1 Calculate spatial grid

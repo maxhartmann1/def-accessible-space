@@ -8,6 +8,16 @@ import wfork_streamlit_profiler
 import accessible_space.tests.test_model
 import accessible_space.tests.test_real_world_data
 
+import warnings
+from sklearn.exceptions import UndefinedMetricWarning
+from pandas.errors import PerformanceWarning
+
+warnings.simplefilter(action='ignore', category=UndefinedMetricWarning)  # because this case is handled (just return nan)
+warnings.simplefilter(action="ignore", category=PerformanceWarning)  # because this code is not performance-critical
+warnings.simplefilter(action="ignore", category=UserWarning)
+warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
 
 def call_test_function_with_profiler(test_func, default_func):
     # Determine the function signature

@@ -449,6 +449,7 @@ def get_das_gained(
         attacking_direction_col=tracking_attacking_direction_col, period_col=tracking_period_col,
         player_in_possession_col=tracking_player_in_possession_col,
         exclude_passer=exclude_passer,
+        respect_offside=respect_offside,
         x_pitch_min=x_pitch_min, x_pitch_max=x_pitch_max, y_pitch_min=y_pitch_min, y_pitch_max=y_pitch_max,
 
         # Options

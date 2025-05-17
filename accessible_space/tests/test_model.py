@@ -145,7 +145,7 @@ def test_missing_ball_frames():  # it is not tested whether this results in vali
     df_passes, _, df_tracking = _get_data_no_common_frames_in_event_and_tracking()
     with pytest.warns(UserWarning, match="Ball positions are missing"):
         try:
-            accessible_space.get_expected_pass_completion(df_passes, df_tracking)
+            accessible_space.get_expected_pass_completion(df_passes, df_tracking, respect_offside=False)
         except (ValueError, AssertionError):
             pass
 
@@ -155,14 +155,14 @@ def test_non_matching_teams(_get_data):
     df_pass_safe, df_pass_risky, df_tracking = _get_data()
     df_pass_safe["team_id"] = "bömf"
     with pytest.raises(ValueError, match="do not match"):
-        accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking)
+        accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking, respect_offside=False)
 
 
 def test_no_poss_artifact_around_passer():
     _, _, df_tracking = _get_butterfly_data()
 
     # Using the default parameters should not lead to inaccessible artifact around passer
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=["attack_cum_poss"])
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=["attack_cum_poss"], respect_offside=False)
 
     ### Plotting
     # fig = accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "attack_poss_density", color="blue")
@@ -188,8 +188,8 @@ def test_as_symmetry(_get_data):
         (24, 0.0001, 70, 1),
     ]:
         ret = accessible_space.get_dangerous_accessible_space(
-            df_tracking, passer_to_exclude_col="player_in_possession", n_angles=angles, v0_min=v0_min,
-            n_v0=n_v0, radial_gridsize=gridsize, period_col=None
+            df_tracking, player_in_possession_col="player_in_possession", n_angles=angles, v0_min=v0_min,
+            n_v0=n_v0, radial_gridsize=gridsize, period_col=None, respect_offside=False, exclude_passer=True,
         )
 
         ## Plotting
@@ -210,9 +210,9 @@ def test_as_symmetry(_get_data):
 def test_xc_symmetry(_get_data):
     df_pass_safe, df_pass_risky, df_tracking = _get_data()
 
-    ret_safe = accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking)
+    ret_safe = accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking, respect_offside=False)
     assert ret_safe.xc > 0.95
-    ret_risky = accessible_space.get_expected_pass_completion(df_pass_risky, df_tracking)
+    ret_risky = accessible_space.get_expected_pass_completion(df_pass_risky, df_tracking, respect_offside=False)
     assert ret_risky.xc < 0.05
 
     # assert np.isclose(ret_safe.xc, 1 - ret_risky.xc, atol=1e-3)  # this is more a nice to have than a strict requirement at the moment (and it doesn't work with the current parameter settings)
@@ -226,12 +226,12 @@ def test_xc_symmetry(_get_data):
 def test_xc_parameters(_get_data, use_approx_two_point, keep_inertial_velocity, use_event_coordinates_as_ball_position, use_fixed_v0):
     df_pass_safe, df_pass_risky, df_tracking = _get_data()
 
-    ret_safe = accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking, use_approx_two_point=use_approx_two_point, keep_inertial_velocity=keep_inertial_velocity, use_event_coordinates_as_ball_position=use_event_coordinates_as_ball_position, use_fixed_v0=use_fixed_v0, clip_to_pitch=False)
+    ret_safe = accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking, respect_offside=False, use_approx_two_point=use_approx_two_point, keep_inertial_velocity=keep_inertial_velocity, use_event_coordinates_as_ball_position=use_event_coordinates_as_ball_position, use_fixed_v0=use_fixed_v0, clip_to_pitch=False)
     assert ret_safe.xc[0] > 0.9
 
     df_tracking["vx"] = -df_tracking["vx"]
     df_tracking["x"] = -df_tracking["x"]
-    ret_risky = accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking, use_approx_two_point=use_approx_two_point, keep_inertial_velocity=keep_inertial_velocity, use_event_coordinates_as_ball_position=use_event_coordinates_as_ball_position, use_fixed_v0=use_fixed_v0, clip_to_pitch=False)
+    ret_risky = accessible_space.get_expected_pass_completion(df_pass_safe, df_tracking, respect_offside=False, use_approx_two_point=use_approx_two_point, keep_inertial_velocity=keep_inertial_velocity, use_event_coordinates_as_ball_position=use_event_coordinates_as_ball_position, use_fixed_v0=use_fixed_v0, clip_to_pitch=False)
     df_tracking["vx"] = -df_tracking["vx"]
     df_tracking["x"] = -df_tracking["x"]
 
@@ -251,7 +251,7 @@ def test_coordinate_systems(_get_data):
     ]:
         ret = accessible_space.get_dangerous_accessible_space(
             df_tracking, x_pitch_min=x_min, x_pitch_max=x_max, y_pitch_min=y_min, y_pitch_max=y_max, radial_gridsize=np.sqrt((x_max - x_min) ** 2 + (y_max - y_min) ** 2) / 50,
-            period_col=None,
+            period_col=None, respect_offside=False,
         )
         assert np.all(np.any(ret.simulation_result.x_grid <= x_min, axis=(1, 2)))
         assert np.all(np.any(ret.simulation_result.x_grid >= x_max, axis=(1, 2)))
@@ -273,7 +273,7 @@ def test_das_gained():
     df_passes = df_passes.copy()
     df_tracking = df_tracking.copy()
 
-    ret_das_gained = accessible_space.get_das_gained(df_passes, df_tracking, use_event_coordinates_as_ball_position=False, use_event_team_as_team_in_possession=False, tracking_period_col=None)
+    ret_das_gained = accessible_space.get_das_gained(df_passes, df_tracking, respect_offside=False, use_event_coordinates_as_ball_position=False, use_event_team_as_team_in_possession=False, tracking_period_col=None)
     df_passes["DAS_gained"] = ret_das_gained.das_gained
     df_passes["AS_gained"] = ret_das_gained.as_gained
     df_passes["AS"] = ret_das_gained.acc_space
@@ -293,12 +293,13 @@ def test_das_gained():
 
     assert (df_passes.loc[i_successful, "DAS_gained"] == df_passes.loc[i_successful, "DAS_reception"] - df_passes.loc[i_successful, "DAS"]).all()
 
-    ret_das = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None)
+    ret_das = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, respect_offside=False)
     df_tracking["DAS"] = ret_das.das
     df_tracking["AS"] = ret_das.acc_space
 
     for _, p4ss in df_passes.iterrows():
         df_tracking_frame = df_tracking[df_tracking["frame_id"] == p4ss["frame_id"]]
+
         assert p4ss["DAS"] == df_tracking_frame["DAS"].iloc[0]
         assert p4ss["AS"] == df_tracking_frame["AS"].iloc[0]
 
@@ -322,7 +323,7 @@ def test_das_gained_duplicate_frames():
     # df_passes2["x_target"] = df_passes2["x_target"]
     df_passes = pd.concat([df_passes, df_passes2], ignore_index=True)
 
-    ret_das_gained = accessible_space.get_das_gained(df_passes, df_tracking, use_event_coordinates_as_ball_position=True, use_event_team_as_team_in_possession=True, tracking_period_col=None)
+    ret_das_gained = accessible_space.get_das_gained(df_passes, df_tracking, respect_offside=False, use_event_coordinates_as_ball_position=True, use_event_team_as_team_in_possession=True, tracking_period_col=None)
     df_passes["DAS_gained"] = ret_das_gained.das_gained
     df_passes["AS_gained"] = ret_das_gained.as_gained
     df_passes["AS"] = ret_das_gained.acc_space
@@ -356,11 +357,11 @@ def test_sort_independence():
 
     # DAS
     df_tracking = df_tracking.sort_values("frame_id", ascending=True).reset_index(drop=True)
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None)
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, respect_offside=False)
     df_tracking["DAS"] = ret.das
 
     df_tracking_sorted = df_tracking.sort_values("frame_id", ascending=False).reset_index(drop=True)
-    ret_sorted = accessible_space.get_dangerous_accessible_space(df_tracking_sorted, period_col=None)
+    ret_sorted = accessible_space.get_dangerous_accessible_space(df_tracking_sorted, period_col=None, respect_offside=False)
     df_tracking_sorted["DAS"] = ret_sorted.das
 
     df_tracking_sorted = df_tracking_sorted.sort_values("frame_id", ascending=True).reset_index(drop=True)
@@ -368,11 +369,11 @@ def test_sort_independence():
 
     # xC
     df_passes = df_passes.sort_values("frame_id", ascending=True).reset_index(drop=True)
-    ret = accessible_space.get_expected_pass_completion(df_passes, df_tracking)
+    ret = accessible_space.get_expected_pass_completion(df_passes, df_tracking, respect_offside=False)
     df_passes["xc"] = ret.xc
 
     df_passes_sorted = df_passes.sort_values("frame_id", ascending=False).reset_index(drop=True)
-    ret_sorted = accessible_space.get_expected_pass_completion(df_passes_sorted, df_tracking)
+    ret_sorted = accessible_space.get_expected_pass_completion(df_passes_sorted, df_tracking, respect_offside=False)
     df_passes_sorted["xc"] = ret_sorted.xc
 
     df_passes_sorted = df_passes_sorted.sort_values("frame_id", ascending=True).reset_index(drop=True)
@@ -380,11 +381,11 @@ def test_sort_independence():
 
     # DAS Gained
     df_passes = df_passes.sort_values("frame_id", ascending=True).reset_index(drop=True)
-    ret = accessible_space.get_das_gained(df_passes, df_tracking, tracking_period_col="period_id")
+    ret = accessible_space.get_das_gained(df_passes, df_tracking, tracking_period_col="period_id", respect_offside=False)
     df_passes["DAS Gained"] = ret.das_gained
 
     df_passes_sorted = df_passes.sort_values("frame_id", ascending=False).reset_index(drop=True)
-    ret_sorted = accessible_space.get_das_gained(df_passes_sorted, df_tracking, tracking_period_col="period_id")
+    ret_sorted = accessible_space.get_das_gained(df_passes_sorted, df_tracking, tracking_period_col="period_id", respect_offside=False)
     df_passes_sorted["DAS Gained"] = ret_sorted.das_gained
 
     df_passes_sorted = df_passes_sorted.sort_values("frame_id", ascending=True).reset_index(drop=True)
@@ -402,12 +403,12 @@ def test_chunk_wise_simulation():
     assert F_event > 1
 
     for chunk_size in [500, 1, 2, 3, None, 0, -1]:
-        ret = accessible_space.get_expected_pass_completion(df_passes, df_tracking, chunk_size=chunk_size, additional_fields_to_return=["defense_cum_poss"])
+        ret = accessible_space.get_expected_pass_completion(df_passes, df_tracking, respect_offside=False, chunk_size=chunk_size, additional_fields_to_return=["defense_cum_poss"])
         assert ret.xc.shape[0] == len(df_passes)
         assert ret.event_frame_index.shape[0] == len(df_passes)
         assert ret.tracking_frame_index.shape[0] == len(df_tracking)
         assert ret.simulation_result.defense_cum_poss.shape[0] == F_event
-        ret_field = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, chunk_size=chunk_size, additional_fields_to_return=["defense_poss_density"])
+        ret_field = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, chunk_size=chunk_size, additional_fields_to_return=["defense_poss_density"])
         assert ret_field.acc_space.shape[0] == len(df_tracking)
         assert ret_field.das.shape[0] == len(df_tracking)
         assert ret_field.simulation_result.defense_poss_density.shape[0] == F_tracking
@@ -416,7 +417,7 @@ def test_chunk_wise_simulation():
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
 def test_cum_prob_sum_is_1(_get_data):
     _, _, df_tracking = _get_data()
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=["attack_cum_prob", "defense_cum_prob", "cum_p0"])
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, additional_fields_to_return=["attack_cum_prob", "defense_cum_prob", "cum_p0"])
     p_sum = ret.simulation_result.attack_cum_prob[0] + ret.simulation_result.defense_cum_prob[0] + ret.simulation_result.cum_p0[0]
     assert np.allclose(p_sum, 1)
 
@@ -429,7 +430,7 @@ def test_simulation_result_dimensions(_get_data):
     n_angles = 24
     importlib.reload(accessible_space)
     importlib.reload(accessible_space)
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, n_angles=n_angles, additional_fields_to_return=accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN)
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, n_angles=n_angles, additional_fields_to_return=accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN)
 
     fields = [
         ret.simulation_result.attack_poss_density,
@@ -511,7 +512,7 @@ def test_simulation_result_dimensions(_get_data):
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
 def test_probability_ranges(_get_data):
     _, _, df_tracking = _get_data()
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN)
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, additional_fields_to_return=accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN)
 
     for p_cum in [
         ret.simulation_result.attack_cum_prob,
@@ -544,14 +545,14 @@ def test_probability_ranges(_get_data):
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
 def test_das_is_smaller_than_as(_get_data):
     _, _, df_tracking = _get_data()
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None)
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None)
     assert (ret.das <= ret.acc_space).all()
 
 
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
 def test_player_level_consistent_with_team_level(_get_data):
     _, _, df_tracking = _get_data()
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN)
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, additional_fields_to_return=accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN)
 
     df_tracking["frame_index"], df_tracking["player_index"] = ret.frame_index, ret.player_index
 
@@ -639,7 +640,7 @@ def test_pitch_clipping(x_min, x_max, y_min, y_max, _get_data):
     _, _, df_tracking = _get_data()
     density_fields = [field for field in accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN if "density" in field]
     importlib.reload(accessible_space)
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN)
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, additional_fields_to_return=accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN)
     cropped_result = accessible_space.clip_simulation_result_to_pitch(ret.simulation_result, x_min, x_max, y_min, y_max)
 
     x_grid = ret.simulation_result.x_grid
@@ -677,7 +678,7 @@ def test_pitch_clipping(x_min, x_max, y_min, y_max, _get_data):
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
 def test_surface_integration(_get_data):
     _, _, df_tracking = _get_data()
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=[field for field in accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN if "density" in field])
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, additional_fields_to_return=[field for field in accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN if "density" in field])
     areas = accessible_space.integrate_surfaces(ret.simulation_result)
     for field in areas:
         assert np.all(field >= 0)
@@ -694,7 +695,7 @@ def test_surface_integration(_get_data):
 ])
 def test_bad_data_das(df_tracking, exception, exception_message_substring):
     with pytest.raises(exception, match=exception_message_substring):
-        accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None)
+        accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None)
 
 #     df_tracking =
 @pytest.mark.parametrize("df_passes,df_tracking,exception,use_event_ball_pos,exception_message_substring", [
@@ -704,13 +705,13 @@ def test_bad_data_das(df_tracking, exception, exception_message_substring):
 ])
 def test_bad_data_xc(df_passes, df_tracking, use_event_ball_pos, exception, exception_message_substring):
     with pytest.raises(exception, match=exception_message_substring):
-        accessible_space.get_expected_pass_completion(df_passes, df_tracking)
+        accessible_space.get_expected_pass_completion(df_passes, df_tracking, respect_offside=False)
 
 
 def test_duplicate_frames():
     df_passes = pd.DataFrame({"frame_id": [5, 5], "player_id": ["a", "a"], "team_id": ["H", "H"], "x": [0, 0], "x_target": [1, 1], "y": [2, 2], "y_target": [3, 3]})
     df_tracking = pd.DataFrame({"frame_id": [5, 5, 5, 5], "player_id": ["a", "ball", "b", "c"], "team_id": ["H", None, "A", "H"], "x": [0, 0, 1, 2], "y": [0, 0, 1, 2], "vx": [0, 0, 1, 2], "vy": [0, 0, 1, 2], "team_in_possession": ["H", "H", "H", "H"]})
-    ret = accessible_space.get_expected_pass_completion(df_passes, df_tracking, additional_fields_to_return=["attack_poss_density"])
+    ret = accessible_space.get_expected_pass_completion(df_passes, df_tracking, respect_offside=False, additional_fields_to_return=["attack_poss_density"])
     assert len(ret.xc) == len(df_passes)
     assert len(ret.event_frame_index) == len(df_passes)
     assert len(ret.tracking_frame_index) == len(df_tracking)
@@ -727,18 +728,18 @@ def test_duplicate_frames():
 
 def test_minimal_das_runs_error_free():
     df_tracking = pd.DataFrame({"frame_id": [1, 1, 1, 1], "player_id": ["a", "ball", "b", "c"], "team_id": ["H", None, "A", "H"], "x": [0, 0, 1, 2], "y": [0, 0, 1, 2], "vx": [0, 0, 1, 2], "vy": [0, 0, 1, 2], "team_in_possession": ["H", "H", "H", "H"]})
-    accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None)
+    accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None)
 
 
 def test_minimal_das_player_runs_error_free():
     df_tracking = pd.DataFrame({"frame_id": [1, 1, 1, 1], "player_id": ["a", "ball", "b", "c"], "team_id": ["H", None, "A", "H"], "x": [0, 0, 1, 2], "y": [0, 0, 1, 2], "vx": [0, 0, 1, 2], "vy": [0, 0, 1, 2], "team_in_possession": ["H", "H", "H", "H"]})
-    accessible_space.get_individual_dangerous_accessible_space(df_tracking, period_col=None)
+    accessible_space.get_individual_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None)
 
 
 def test_minimal_xc_runs_error_free():
     df_tracking = pd.DataFrame({"frame_id": [1, 1, 1, 1], "player_id": ["a", "ball", "b", "c"], "team_id": ["H", None, "A", "H"], "x": [0, 0, 1, 2], "y": [0, 0, 1, 2], "vx": [0, 0, 1, 2], "vy": [0, 0, 1, 2], "team_in_possession": ["H", "H", "H", "H"]})
     df_passes = pd.DataFrame({"frame_id": [1, 1], "player_id": ["a", "a"], "team_id": ["H", "H"], "x": [0, 0], "x_target": [1, 1], "y": [2, 2], "y_target": [3, 3]})
-    accessible_space.get_expected_pass_completion(df_passes, df_tracking)
+    accessible_space.get_expected_pass_completion(df_passes, df_tracking, respect_offside=False)
 
 
 
@@ -762,7 +763,7 @@ def test_fields_to_return_are_present(_get_data):
         "player_prob_density",
         "player_poss_density",
     ]:
-        ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=[field])
+        ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, additional_fields_to_return=[field])
         assert getattr(ret.simulation_result, field) is not None
 
 
@@ -789,7 +790,7 @@ def test_fields_to_return_others_are_not_present(_get_data):
     das_fields = ["attack_poss_density"]
 
     for field in all_fields:
-        ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=[field])
+        ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, additional_fields_to_return=[field])
 
         none_fields = [ret_field for ret_field in all_fields if getattr(ret.simulation_result, ret_field) is None]
         present_fields = [ret_field for ret_field in all_fields if isinstance(getattr(ret.simulation_result, ret_field), np.ndarray)]
@@ -804,7 +805,7 @@ def test_fields_to_return_others_are_not_present(_get_data):
         for field2 in all_fields:
             if field1 == field2:
                 continue
-            ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=[field1, field2])
+            ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, additional_fields_to_return=[field1, field2])
 
             none_fields = [ret_field for ret_field in all_fields if getattr(ret.simulation_result, ret_field) is None]
             present_fields = [ret_field for ret_field in all_fields if isinstance(getattr(ret.simulation_result, ret_field), np.ndarray)]
@@ -823,7 +824,7 @@ def test_fields_to_return_others_are_not_present(_get_data):
 @pytest.mark.parametrize("_get_data", [_get_butterfly_data, _get_butterfly_data_with_nans])
 def test_surface_plot(_get_data):
     _, _, df_tracking = _get_data()
-    ret = accessible_space.get_dangerous_accessible_space(df_tracking, period_col=None, additional_fields_to_return=[field for field in accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN if "density" in field])
+    ret = accessible_space.get_dangerous_accessible_space(df_tracking, respect_offside=False, period_col=None, additional_fields_to_return=[field for field in accessible_space.ALL_OPTIONAL_FIELDS_TO_RETURN if "density" in field])
     matplotlib.use("Agg")
 
     def _plot():
@@ -832,35 +833,36 @@ def test_surface_plot(_get_data):
         plt.ylim([-34, 34])
         plt.scatter(df_tracking["x"], df_tracking["y"], color=df_tracking["player_color"])
 
+    import streamlit as st
     _plot()
     accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "attack_poss_density")
-    # st.write("attack_poss_density")
-    # st.write(plt.gcf())
+    st.write("attack_poss_density")
+    st.write(plt.gcf())
     plt.close()
     _plot()
     accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "attack_prob_density")
-    # st.write("attack_prob_density")
-    # st.write(plt.gcf())
+    st.write("attack_prob_density")
+    st.write(plt.gcf())
     plt.close()
     _plot()
     accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "defense_poss_density")
-    # st.write("defense_poss_density")
-    # st.write(plt.gcf())
+    st.write("defense_poss_density")
+    st.write(plt.gcf())
     plt.close()
     _plot()
     accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "defense_prob_density")
-    # st.write("defense_prob_density")
-    # st.write(plt.gcf())
+    st.write("defense_prob_density")
+    st.write(plt.gcf())
     plt.close()
     _plot()
     accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "player_prob_density", player_index=0)
-    # st.write("player_prob_density")
-    # st.write(plt.gcf())
+    st.write("player_prob_density")
+    st.write(plt.gcf())
     plt.close()
     _plot()
     accessible_space.plot_expected_completion_surface(ret.simulation_result, 0, "player_poss_density", player_index=0)
-    # st.write("player_poss_density")
-    # st.write(plt.gcf())
+    st.write("player_poss_density")
+    st.write(plt.gcf())
     plt.close()
 
     with pytest.raises(ValueError, match=f"no player index is given"):
@@ -876,7 +878,7 @@ def test_additional_defender_decreases_as_and_additional_attacker_increases_as(_
 
     def get_as_and_das(_df_tracking):
         ret_baseline = accessible_space.get_dangerous_accessible_space(
-            _df_tracking, infer_attacking_direction=False, attacking_direction_col="attacking_direction",
+            _df_tracking, respect_offside=False, infer_attacking_direction=False, attacking_direction_col="attacking_direction",
         )
         return ret_baseline.acc_space.iloc[0], ret_baseline.das.iloc[0], ret_baseline
 

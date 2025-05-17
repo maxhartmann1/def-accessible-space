@@ -1,5 +1,9 @@
+import ast
 import os
 import sys
+
+import streamlit.runtime
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from sklearn.exceptions import UndefinedMetricWarning
@@ -42,10 +46,10 @@ rng = np.random.default_rng(SEED)
 # "has_uint32":0
 # "uinteger":0
 # }
-st.write("rng.bit_generator.state start")
-st.write(rng.bit_generator.state)
-print(rng.bit_generator.state)
-assert rng.bit_generator.state == {'bit_generator': 'PCG64', 'state': {'state': 87410119717072287666137457930238493692, 'inc': 60341604818905247986700519057288636087}, 'has_uint32': 0, 'uinteger': 0}
+# st.write("rng.bit_generator.state start")
+# st.write(rng.bit_generator.state)
+# print(rng.bit_generator.state)
+# assert rng.bit_generator.state == {'bit_generator': 'PCG64', 'state': {'state': 87410119717072287666137457930238493692, 'inc': 60341604818905247986700519057288636087}, 'has_uint32': 0, 'uinteger': 0}
 
 plt.close()
 gc.collect()
@@ -1234,7 +1238,7 @@ def simulate_parameters(df_training, dfs_tracking, use_prefit, add_confidence_in
 
 
 def validate_multiple_matches(
-    dfs_tracking, dfs_passes, n_steps=100, training_size=0.7, use_prefit=True, outcome_col="success", run_asserts=False,
+    dfs_tracking, dfs_passes, n_steps=100, training_size=0.7, use_prefit=True, outcome_col="success", run_asserts=True,
 ):
     @st.fragment
     def frag_plot_das():
@@ -1709,7 +1713,7 @@ def validate_multiple_matches(
     return df_test_scores, biggest_xc_in_test_set, avg_xc_total_only_success_test, avg_xc_total_only_failure_test
 
 
-def validation_dashboard(dummy=False, run_asserts=False):
+def validation_dashboard(dummy=False, run_asserts=True):
     # suppress bs warnings
     warnings.simplefilter(action='ignore', category=UndefinedMetricWarning)  # because this case is handled (just return nan)
     warnings.simplefilter(action="ignore", category=PerformanceWarning)  # because this code is not performance-critical
@@ -1800,9 +1804,9 @@ def validation_dashboard(dummy=False, run_asserts=False):
     # "has_uint32":1
     # "uinteger":1775787077
     # }
-    st.write("rng.bit_generator.state end")
-    st.write(rng.bit_generator.state)
-    print(rng.bit_generator.state)
+    # st.write("rng.bit_generator.state end")
+    # st.write(rng.bit_generator.state)
+    # print(rng.bit_generator.state)
 
     assert rng.bit_generator.state == {'bit_generator': 'PCG64', 'state': {'state': 286257635543766940493387507884471841288, 'inc': 60341604818905247986700519057288636087}, 'has_uint32': 1, 'uinteger': 1775787077}
 
@@ -1882,15 +1886,25 @@ def validate_das(dfs_tracking, dfs_passes):
 
 
 def main(run_as_streamlit_app=True, dummy=False, run_asserts=True):
-    if run_as_streamlit_app:
-        key_argument = "run_dashboard"
-        if len(sys.argv) == 2 and sys.argv[1] == key_argument:
-            return validation_dashboard(dummy=dummy, run_asserts=run_asserts)
-        else:  # if script is called directly, call it again with streamlit
-            return subprocess.run(['streamlit', 'run', os.path.abspath(__file__), key_argument], check=True)
-    else:
+    if streamlit.runtime.exists() or not run_as_streamlit_app:
         return validation_dashboard(dummy=dummy, run_asserts=run_asserts)
+    else:
+        return subprocess.run(['streamlit', 'run', os.path.abspath(__file__), f"{dummy}", str(run_asserts)], check=True)
+
+    # if run_as_streamlit_app:
+    #     key_argument = "run_dashboard"
+    #     if len(sys.argv) == 4 and sys.argv[1] == key_argument:
+    #         return validation_dashboard(dummy=dummy, run_asserts=run_asserts)
+    #     else:  # if script is called directly, call it again with streamlit
+    #         return subprocess.run(['streamlit', 'run', os.path.abspath(__file__), key_argument, f"{dummy}", str(run_asserts)], check=True)
+    # else:
+    #     return validation_dashboard(dummy=dummy, run_asserts=run_asserts)
 
 
 if __name__ == '__main__':
-    main(run_asserts=True)
+    if streamlit.runtime.exists():
+        dummy = ast.literal_eval(sys.argv[1]) if len(sys.argv) > 1 else False
+        run_asserts = ast.literal_eval(sys.argv[2]) if len(sys.argv) > 2 else True
+        main(dummy=dummy, run_asserts=run_asserts)
+    else:
+        main()
