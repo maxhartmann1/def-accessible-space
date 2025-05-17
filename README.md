@@ -144,7 +144,7 @@ python -m accessible_space demo
 My validation can be reproduced with this command, which opens up a Streamlit dashboard. Feel free to explore the dashboard and code to understand the model and its predictive performance.
 
 ```bash
-pip install accessible_space[full]==0.1.11  # exact reproduction
+pip install accessible_space[full]==2.0.0  # exact reproduction
 python -m accessible_space validation
 ```
 
