@@ -1,6 +1,6 @@
 [project]
 name = "accessible_space"
-version = "1.0.12"
+version = "2.0.0"
 authors = [
   {name="Jonas Bischofberger", email="jonas.bischofberger@univie.ac.at"},
 ]
@@ -33,26 +33,24 @@ full = [
     "scikit-learn",
     "kloppy>=3.15.0",
     "xmltodict",
-    "joblib",
     "streamlit",
     "wfork-streamlit-profiler",
     "brokenaxes",
     "netcal",
     "mplsoccer",
-#    "databallpy",
+    "databallpy",
 ]
 
 dev = [
     "scikit-learn",
     "kloppy>=3.15.0",
     "xmltodict",
-    "joblib",
     "streamlit",
     "wfork-streamlit-profiler",
     "brokenaxes",
     "netcal",
     "mplsoccer",
-#    "databallpy",
+    "databallpy",
 
     "pytest",
     "pytest-cov",
