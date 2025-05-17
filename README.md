@@ -5,19 +5,27 @@
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Fdemo.ipynb)
 ![License](https://img.shields.io/github/license/jonas-bischofberger/accessible-space)
 
-This is a provider-agnostic, easy-to-use and production-ready implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics. Based on physical pass simulations across the pitch, DAS quantifies dangerous areas that a team can access by a pass, allowing rich insights into passing, off-ball attacking and defending behaviour, and spatial team dynamics.
+This is a provider-agnostic and easy-to-use implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics.
+Based on physical pass simulations, DAS quantifies threatening areas that a team can access by a pass.
+You can use DAS to analyze profound aspects of performance like:
+
+- Strategic passing behaviour
+- Timing and danger of attacking movement
+- Defensive positioning to close down passing options
+- Team defensive organization
 
 To learn how to access DAS and related metrics, see the examples below.
 
-If you are interested in understanding the model, there is [a demo notebook explaining the basic workings of the model](https://github.com/jonas-bischofberger/accessible-space/blob/main/accessible_space/apps/demo.ipynb). This notebook can also be accessed without any installation through [Binder](https://mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Fdemo.ipynb).
+If you are interested in understanding the model, there is [a demo notebook explaining its basic workings](https://github.com/jonas-bischofberger/accessible-space/blob/main/accessible_space/apps/demo.ipynb).
+This notebook can also be accessed without installation through [Binder](https://mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Fdemo.ipynb).
 
-### Install package 
+### Installation 
 
 ```bash
 pip install accessible-space
 ```
 
-### Usage examples
+### Usage
 
 ``accessible-space`` exposes a simple pandas interface that you can use to add the following metrics to tracking and event data from any provider.
 - xC (Expected completion): The expected probability that a pass is completed. Measures the risk of a pass.
@@ -25,7 +33,7 @@ pip install accessible-space
 - DAS Gained: The increase in DAS through a pass. Measures the reward and strategic impact of a pass by evaluating whether the pass opens up new dangerous passing opportunities or not.
 - AS Gained: The increase in AS (Accessible space) through a pass. Measures the degree to which the pass opens up safe passing opportunities.
 
-To obtain these metrics, you only need to pass your dataframes and the schema of your data as follows:
+To obtain these metrics, you need to pass your dataframes and the schema of your data as follows:
 
 ```python
 import accessible_space
@@ -136,7 +144,7 @@ python -m accessible_space demo
 My validation can be reproduced with this command, which opens up a Streamlit dashboard. Feel free to explore the dashboard and code to understand the model and its predictive performance.
 
 ```bash
-pip install accessible_space[full]
+pip install accessible_space[full]==0.1.11  # exact reproduction
 python -m accessible_space validation
 ```
 
@@ -149,7 +157,6 @@ python -m accessible_space tests
 
 ### Known issues (feel free to improve upon them)
 
-- Offside players should have an interception rate of 0 - this functionality is not implemented yet.
 - This model doesn't simulate high passes, which is a significant limitation. If you have an idea how to add it, feel free to do so!
 - Probabilities and possibilities are not fully normalized yet, i.e. probabilities generally do not sum to 1, possibilities may exceed 1, etc. This is because of numerical errors. Normalizing the prob-/possibilities is a non-trivial problem because it has to be done w.r.t two different axes (along the ball trajectory and across players) while maintaining temporal dependencies. Due to the difficulty, it is currently only partially implemented.
 
