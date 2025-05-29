@@ -220,9 +220,9 @@ def transform_into_arrays(
     P = PLAYER_POS.shape[1]
     assert P == player_teams.shape[0]
     assert P == players.shape[0]
-    assert PLAYER_POS.shape[2] >= 4  # >= or = ?
+    assert PLAYER_POS.shape[2] == len(coordinates)  # >= or = ?
     if not ignore_ball_position:
-        assert BALL_POS.shape[1] >= 2  # ...
+        assert BALL_POS.shape[1] == len(coordinates)  # ...
 
     return PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index
 
