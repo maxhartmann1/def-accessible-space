@@ -15,4 +15,4 @@ venv/
 *.bat
 .ipynb_checkpoints/
 datasets/
-simualtion_results/
+simulation_results/
