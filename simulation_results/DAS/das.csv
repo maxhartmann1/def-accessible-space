@@ -1,0 +1,2 @@
+provider,game,frame_step_size,intervall (sec),home_DAS_count,away_DAS_count,against_home_sum_DAS,against_away_sum_DAS,against_home_mean_DAS,against_away_mean_DAS,against_home_max_DAS,against_away_max_DAS
+metrica,metrica,1500,60.0,34,31,648.1601903768928,962.4021689504438,20.908393237964287,28.305946145601286,64.55533469353838,108.57266099783317

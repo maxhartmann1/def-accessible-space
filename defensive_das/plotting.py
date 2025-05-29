@@ -13,9 +13,9 @@ POSS_TO_DEF = {"home": "away", "away": "home"}
 
 def plot_total_das(df):
     color_scale = alt.Scale(domain=["home", "away"], range=["blue", "red"])
-    df = df[["frame", "ball_possession", "AS", "DAS"]]
+    df = df[["frame", "team_possession", "AS", "DAS"]]
     df = df.drop_duplicates(subset=["frame"], keep="first")
-    df = df.groupby("ball_possession").agg(
+    df = df.groupby("team_possession").agg(
         {"AS": ["count", "sum", "mean", "max"], "DAS": ["count", "sum", "mean", "max"]}
     )
     df_das = df[["DAS"]]
@@ -34,22 +34,35 @@ def plot_total_das(df):
                 title="Anteil (relativ)",
             ),
             color=alt.Color(
-                "ball_possession:N",
+                "team_possession:N",
                 scale=color_scale,
             ),
-            order=alt.Order("ball_possession:N", sort="descending"),
-            tooltip=["ball_possession", "DAS_count"],
+            order=alt.Order("team_possession:N", sort="descending"),
+            tooltip=["team_possession", "DAS_count"],
         )
         .properties(title="DAS Count", width=600)
+    )
+    count_text = (
+        alt.Chart(df_das_count)
+        .mark_text(align="center", baseline="middle", dx=-100, color="white")
+        .encode(
+            x=alt.X(
+                "DAS_count:Q",
+                stack="normalize",
+                title="Anteil (relativ)",
+            ),
+            order=alt.Order("team_possession:N", sort="descending"),
+            text=alt.Text("DAS_count:Q", format=".0f"),
+        )
     )
 
     # Ballbesitz berücksichtigen, wenn ergänzt
     if st.session_state.possesion_value_home > 0:
         df_poss = df_das_count.rename(columns={"DAS_count": "Possession"})
-        df_poss.loc[df_poss["ball_possession"] == "home", "Possession"] = (
+        df_poss.loc[df_poss["team_possession"] == "home", "Possession"] = (
             st.session_state.possesion_value_home
         )
-        df_poss.loc[df_poss["ball_possession"] == "away", "Possession"] = (
+        df_poss.loc[df_poss["team_possession"] == "away", "Possession"] = (
             100 - st.session_state.possesion_value_home
         )
         poss_chart = (
@@ -62,22 +75,22 @@ def plot_total_das(df):
                     title="Gemessener Ballbesitz (Quelle Sofascore)",
                 ),
                 color=alt.Color(
-                    "ball_possession:N",
+                    "team_possession:N",
                     scale=color_scale,
                     legend=None,
                 ),
-                order=alt.Order("ball_possession:N", sort="descending"),
-                tooltip=["ball_possession", "Possession"],
+                order=alt.Order("team_possession:N", sort="descending"),
+                tooltip=["team_possession", "Possession"],
             )
-            .properties(title="DAS Count", width=1000)
+            .properties(title="Echter Ballbesitz", width=600)
         )
 
     df_das = df_das.drop("DAS_count", axis=1)
     metriks = df_das.columns.tolist()
     df_das = df_das.reset_index()
-    df_das["defending_team"] = df_das["ball_possession"].map(POSS_TO_DEF)
+    df_das["defending_team"] = df_das["team_possession"].map(POSS_TO_DEF)
     df_das_melted = df_das.melt(
-        id_vars=["ball_possession", "defending_team"],
+        id_vars=["team_possession", "defending_team"],
         var_name="Metrik",
         value_name="Wert",
     )
@@ -93,74 +106,123 @@ def plot_total_das(df):
                     sort=["home", "away"],
                 ),
                 y=alt.Y("Wert:Q", title=metrik),
-                color=alt.Color("ball_possession:N", scale=color_scale),
+                color=alt.Color("team_possession:N", scale=color_scale),
             )
             .properties(title=metrik, width=150, height=250)
         )
-        charts.append(chart)
+        text = (
+            alt.Chart(df_das_melted[df_das_melted["Metrik"] == metrik])
+            .mark_text(align="center", baseline="middle", dy=-10)
+            .encode(
+                x=alt.X(
+                    "defending_team:N",
+                    sort=["home", "away"],
+                ),
+                y="Wert:Q",
+                text=alt.Text("Wert:Q", format=".1f"),  # Zahlenformat anpassen
+            )
+        )
+        charts.append(chart + text)
 
     (
-        st.altair_chart(alt.vconcat(count_chart, poss_chart, alt.hconcat(*charts)))
+        st.altair_chart(
+            alt.vconcat((count_chart + count_text), poss_chart, alt.hconcat(*charts))
+        )
         if st.session_state.possesion_value_home > 0
-        else st.altair_chart(alt.vconcat(count_chart, alt.hconcat(*charts)))
+        else st.altair_chart(
+            alt.vconcat((count_chart + count_text), alt.hconcat(*charts))
+        )
     )
 
 
-def plot_frame_origin(match, frame, pitch_result, index_das, df_pre_frame):
-    idx_databallpy = match.tracking_data.index[
-        match.tracking_data["frame"] == frame
-    ].tolist()[0]
-    fig, ax = plt.subplots(figsize=(10, 6))
-    fig, ax = plot_soccer_pitch(
-        fig=fig, ax=ax, field_dimen=match.pitch_dimensions, pitch_color="white"
-    )
+def plot_frame_origin(game, game_idx, pitch_result, pitch_result_idx, player_column_id):
+    # fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plot_soccer_pitch(field_dimen=game.pitch_dimensions, pitch_color="white")
     fig, ax = plot_tracking_data(
-        match,
-        idx_databallpy,
+        game,
+        game_idx,
         fig=fig,
         ax=ax,
-        team_colors=["blue", "red"],
+        team_colors=["red", "blue"],
         add_player_possession=True,
-        variable_of_interest=round(float(pitch_result.das.iloc[index_das]), 2),
+        variable_of_interest=round(float(pitch_result.das.iloc[pitch_result_idx]), 2),
     )
 
     try:
         accessible_space.plot_expected_completion_surface(
-            pitch_result.dangerous_result, frame_index=index_das
+            pitch_result.dangerous_result, frame_index=pitch_result_idx
         )
     except:
         st.warning(f"Fehler beim Plotten von DAS")
 
-    for _, row in df_pre_frame.iterrows():
-        if row["team_id"] != row["ball_possession"] and row["team_id"] != "ball":
-            player_x, player_y = row["player_x"], row["player_y"]
-            circle = plt.Circle(
-                (player_x, player_y),
-                color=TEAM_COLORS[row["team_id"]],
-                alpha=0.3,
-                fill=True,
-            )
-            ax.add_patch(circle)
-    return fig, ax
-
-
-def plot_optimal_positions(fig, ax, match, frame):
-    match_def = match.copy()
-    match_def.tracking_data = match_def.tracking_data[
-        match_def.tracking_data["frame"] == frame
+    player_x, player_y = game.tracking_data.iloc[game_idx][
+        [f"{player_column_id}_x", f"{player_column_id}_y"]
     ]
-    idx_databallpy = match_def.tracking_data.index[
-        match_def.tracking_data["frame"] == frame
-    ].tolist()[0]
-    off_team = match_def.tracking_data.loc[idx_databallpy]["ball_possession"]
-    for col in match_def.tracking_data.columns.tolist():
-        if off_team in col:
-            match_def.tracking_data.loc[idx_databallpy, col] = None
-    fig, ax = plot_tracking_data(
-        match_def,
-        idx_databallpy,
-        fig=fig,
-        ax=ax,
-        team_colors=["lightblue", "pink"],
+    circle = plt.Circle(
+        (player_x, player_y),
+        radius=1,
+        color="#00FF00",
+        alpha=1,
+        fill=False,
+        zorder=10,
+        linewidth=2,
     )
+    ax.add_patch(circle)
     return fig, ax
+
+
+def plot_frame_random(
+    fig,
+    ax,
+    game,
+    game_idx,
+    pitch_result,
+    das_idx,
+    result_idx,
+    player_column_id,
+    new_frame_random,
+):
+    delta_x, delta_y = float(new_frame_random.split("_")[3]), float(
+        new_frame_random.split("_")[4]
+    )
+    player_x, player_y = game.tracking_data.iloc[game_idx][
+        [f"{player_column_id}_x", f"{player_column_id}_y"]
+    ]
+    player_x_new = player_x + delta_x
+    player_y_new = player_y + delta_y
+    game.tracking_data.at[game_idx, f"{player_column_id}_x"] = player_x_new
+    game.tracking_data.at[game_idx, f"{player_column_id}_y"] = player_y_new
+
+    fig_rand, ax_rand = plot_soccer_pitch(
+        field_dimen=game.pitch_dimensions, pitch_color="white"
+    )
+    fig_rand, ax_rand = plot_tracking_data(
+        game,
+        game_idx,
+        fig=fig_rand,
+        ax=ax_rand,
+        team_colors=["red", "blue"],
+        add_player_possession=True,
+        variable_of_interest=round(float(pitch_result.das.iloc[das_idx]), 2),
+    )
+    try:
+        accessible_space.plot_expected_completion_surface(
+            pitch_result.dangerous_result, frame_index=result_idx
+        )
+    except:
+        st.warning(f"Fehler beim Plotten von DAS")
+
+    player_x, player_y = game.tracking_data.iloc[game_idx][
+        [f"{player_column_id}_x", f"{player_column_id}_y"]
+    ]
+    circle = plt.Circle(
+        (player_x, player_y),
+        radius=1,
+        color="#00FF00",
+        alpha=1,
+        fill=False,
+        zorder=10,
+        linewidth=2,
+    )
+    ax_rand.add_patch(circle)
+    return fig_rand, ax_rand

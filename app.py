@@ -1,49 +1,53 @@
-from turtle import home
+from matplotlib.pylab import rand
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import time
 import defensive_das
-from databallpy.visualize import plot_soccer_pitch, plot_tracking_data
-from databallpy.utils.constants import OPEN_MATCH_IDS_DFL
+from databallpy.utils.constants import OPEN_GAME_IDS_DFL
+from pathlib import Path
 
 
-def load_match(provider, match_id):
-    match = defensive_das.load_match_data(provider, match_id)
-    prep_match = defensive_das.prep_match_data(match)
-    return prep_match
+def load_game(provider, game_id):
+    game = defensive_das.load_game_data(provider, game_id)
+    prep_game = defensive_das.prep_game_data(game.name, game)
+    return prep_game
 
 
-def get_open_source_matches():
-    matches = OPEN_MATCH_IDS_DFL
-    matches["metrica"] = "Metrica Anonymisiertes Spiel"
-    return matches
+def get_open_source_games():
+    games = OPEN_GAME_IDS_DFL
+    games["metrica"] = "Metrica Anonymisiertes Spiel"
+    return games
 
 
-def frameify_tracking_data(df_tracking, match):
+def frameify_tracking_data(df_tracking, game):
     coordinate_cols = []
     player_to_team = {}
-    players = match.get_column_ids()
+    players = game.get_column_ids()
     players.append("ball")
     for player in players:
-        coordinate_cols.append([f"{player}_x", f"{player}_y"])
+        coordinate_cols.append(
+            [f"{player}_x", f"{player}_y", f"{player}_vx", f"{player}_vy"]
+        )
         player_to_team[str(player)] = player.split("_")[0]
 
     df_tracking = defensive_das.frameify_tracking_data(
-        df_tracking, match.frame_rate, coordinate_cols, players, player_to_team
+        df_tracking, coordinate_cols, players, player_to_team
     )
     return df_tracking
 
 
 def filter_tracking_df_for_das(
-    df, minute_frame_rate, frame_rate, method="frame_rate", dead_ball=True
+    tracking_data, frame_step_size, frame_rate, method="frame_rate", dead_ball=True
 ):
+    df = pd.DataFrame(tracking_data.copy())
     if dead_ball:
         df = df[df["ball_status"] == "alive"]
+
     if method == "frame_rate":
-        filter_step = int((frame_rate * 60) / minute_frame_rate)
-        return df[frame_rate::filter_step]
+        return df[frame_rate::frame_step_size]
+
     else:
         return df
 
@@ -107,14 +111,50 @@ def all_frame_optimization(match, frame_list, pitch_result, df_frameified):
 
 
 def single_player_optimize(
-    match, frame_list, df_frameified, pitch_result, player_column_id
+    game, frame_list, df_frameified, pitch_result, player_column_id
 ):
+    df_tracking = pd.DataFrame(game.tracking_data.copy())
     df_pre_frames = defensive_das.get_pre_frames(
-        match.tracking_data, match.frame_rate, frame_list=frame_list
+        df_tracking, game.tracking_data.frame_rate, frame_list=frame_list
     )
     # df_pre_frames = frameify_tracking_data(df_pre_frames, match)
     df_frameified_simulations = defensive_das.single_player_das_optimization(
-        df_frameified, pitch_result, df_pre_frames, match, frame_list, player_column_id
+        df_frameified, df_pre_frames, frame_list, player_column_id
+    )
+    return df_frameified_simulations
+
+
+def single_player_heuristic(game, frame_list, df_frameified, player_column_id):
+    df_tracking = pd.DataFrame(game.tracking_data.copy())
+    df_pre_frames = defensive_das.get_pre_frames(
+        df_tracking, game.tracking_data.frame_rate, frame_list=frame_list
+    )
+    df_frameified_simulations = defensive_das.optimize_all_pos_in_reach(
+        df_frameified, df_pre_frames, frame_list, player_column_id
+    )
+    return df_frameified_simulations
+
+
+def random_heuristic(game, frame_list, df_frameified, player_column_id):
+    df_tracking = pd.DataFrame(game.tracking_data.copy())
+    df_pre_frames = defensive_das.get_pre_frames(
+        df_tracking, game.tracking_data.frame_rate, frame_list=frame_list
+    )
+    df_frameified_simulations = defensive_das.optimize_random_pos(
+        df_frameified, df_pre_frames, frame_list, player_column_id
+    )
+    return df_frameified_simulations
+
+
+def interpolate_heuristic(
+    game, frame_list, df_frameified, player_column_id, pitch_result
+):
+    df_tracking = pd.DataFrame(game.tracking_data.copy())
+    df_pre_frames = defensive_das.get_pre_frames(
+        df_tracking, game.tracking_data.frame_rate, frame_list=frame_list
+    )
+    df_frameified_simulations = defensive_das.optimize_topn_pitchdas(
+        df_frameified, df_pre_frames, frame_list, player_column_id, pitch_result
     )
     return df_frameified_simulations
 
@@ -123,7 +163,19 @@ def reduce_df_simulations(df_frameified_simulations):
     df_frameified_simulations = df_frameified_simulations[
         df_frameified_simulations["opt_player"]
         == df_frameified_simulations["player_id"]
-    ]
+    ][["player_id", "frame", "DAS", "DAS_new"]]
+    df_frameified_simulations["DAS_potential"] = (
+        df_frameified_simulations["DAS"] - df_frameified_simulations["DAS_new"]
+    ).clip(lower=0)
+    return df_frameified_simulations
+
+
+def result_to_file(match, spieler, df, frame_frequenz, optimierung):
+    filepath = Path(
+        f"simulation_results/{match[0]}/{match[1]}/{frame_frequenz}/{optimierung}/{spieler}.csv"
+    )
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(filepath, index=False)
 
 
 def click_button(button):
@@ -141,51 +193,33 @@ def reset_possesion():
 
 
 def main():
-    # if "minute_frame_rate" not in st.session_state:
-    #     st.session_state.minute_frame_rate = 1
-    # if "input_index" not in st.session_state:
-    #     st.session_state.input_index = 0
-    # if "one_frame_clicked" not in st.session_state:
-    #     st.session_state.one_frame_clicked = False
-    # if "all_frame_clicked" not in st.session_state:
-    #     st.session_state.all_frame_clicked = False
 
     st.write(st.session_state)
-    # Überschrift Streamlit Page
     st.markdown(
         "<h1 style='text-align: center;'>Defensive Metric based on DAS</h1>",
         unsafe_allow_html=True,
     )
+
     # Verfügbare Spiele laden
     col1, col2 = st.columns(2)
-    matches = get_open_source_matches()
+    games = get_open_source_games()
     with col1:
-        st.write("### Match auswählen")
-        match_id = st.selectbox(
+        st.write("### Spiel auswählen")
+        game_id = st.selectbox(
             "Open Source Match auswählen",
-            matches,
+            games,
             index=7,
-            format_func=lambda x: matches[x],
+            format_func=lambda x: games[x],
             on_change=reset_possesion,
         )
-    provider = "metrica" if match_id == "metrica" else "dfl"
+    provider = "metrica" if game_id == "metrica" else "dfl"
 
     # Ausgewähltes Spiel laden
     start_time = time.time()
-    match = load_match(provider, match_id)
+    game = load_game(provider, game_id)
     with col1:
         st.write(
-            f"{match.home_team_name} {match.home_score} - {match.away_score} {match.away_team_name} provided by {match.tracking_data_provider} mit Frame Rate von {match.frame_rate} Frames / Sekunde."
-        )
-
-    # Anzahl zu verarbeitender Frames wählen
-    with col2:
-        st.write("### Frame-Rate reduzieren")
-        minute_frame_rate = st.number_input(
-            "Frames pro Minute",
-            min_value=1,
-            max_value=match.frame_rate * 60,
-            key="minute_frame_rate",
+            f"{game.home_team_name} {game.home_score} - {game.away_score} {game.away_team_name} provided by {game.tracking_data.provider} mit Frame Rate von {game.tracking_data.frame_rate} Frames / Sekunde."
         )
         st.number_input(
             "Ballbesitz Heimteam in %",
@@ -193,10 +227,26 @@ def main():
             max_value=99,
             key="possesion_value_home",
         )
+
+    # Anzahl zu verarbeitender Frames wählen
+    with col2:
+        if "minute_frame_rate" not in st.session_state:
+            st.session_state.minute_frame_rate = game.tracking_data.frame_rate * 60
+        st.write("### Frame-Rate reduzieren")
+        st.write(
+            f"Step size eingeben für Frame Filter. **{game.tracking_data.frame_rate}** entspricht 1 Frame pro Sekunde."
+        )
+        frame_step_size = st.number_input(
+            "Step Size für Frames",
+            min_value=1,
+            max_value=game.tracking_data.frame_rate * 60,
+            key="minute_frame_rate",
+        )
+
     df_tracking_filtered = filter_tracking_df_for_das(
-        match.tracking_data, minute_frame_rate, match.frame_rate
+        game.tracking_data, frame_step_size, game.tracking_data.frame_rate
     )
-    df_frameified = frameify_tracking_data(df_tracking_filtered, match)
+    df_frameified = frameify_tracking_data(df_tracking_filtered, game)
     st.write(
         f"**Preprocessing für DAS Calculation in {time.time() - start_time:.2f} Sekunden**"
     )
@@ -204,11 +254,10 @@ def main():
     # ---------------------------------------------------------
 
     st.write("### DAS Berechnung durchführen")
-    df_tracking_ball = df_frameified[df_frameified["player_id"] == "ball"].reset_index(
-        drop=True
-    )
+
     start_time = time.time()
     pitch_result = calculate_dangerous_accessible_space(df_frameified)
+
     df_frameified["AS"] = pitch_result.acc_space
     df_frameified["DAS"] = pitch_result.das
     frame_amount = df_frameified["frame"].nunique()
@@ -216,34 +265,14 @@ def main():
     st.write(
         f"**Dangerous Accessible Space Calculation in {time.time() - start_time:.2f} Sekunden** mit {frame_amount} Frames"
     )
+    defensive_das.total_das_to_csv(df_frameified, frame_step_size, provider, game_id)
     defensive_das.plot_total_das(df_frameified)
     st.divider()
     # ---------------------------------------------------------
 
-    # Optimierung von 1 Frame für Entwicklungszwecke / Testen, für tatsächliche Auswertungen wertlos
-    # >>> st.button("Optimierung Ein Frame", on_click=click_button, args=["one_frame"])
-    # if st.session_state.one_frame_clicked:
-    #     (
-    #         frame,
-    #         input_index,
-    #         df_pre_frame,
-    #         match_optimized,
-    #         df_optimized,
-    #         pitch_result_optimized,
-    #     ) = one_frame_optimization(
-    #         frame_amount, df_tracking_ball, match, pitch_result, df_frameified
-    #     )
-    #     fig, ax = defensive_das.plot_frame_origin(
-    #         match, frame, pitch_result, input_index, df_pre_frame
-    #     )
-    #     fig, ax = defensive_das.plot_optimal_positions(
-    #         fig, ax, match_optimized, frame
-    #     )
-    #     if st.toggle("Plot Field"):
-    #         st.pyplot(fig)
-    home_players = match.home_players[["id", "full_name", "position"]].copy()
+    home_players = game.home_players[["id", "full_name", "position"]].copy()
     home_players["team_id"] = "Home"
-    away_players = match.away_players[["id", "full_name", "position"]].copy()
+    away_players = game.away_players[["id", "full_name", "position"]].copy()
     away_players["team_id"] = "Away"
     players = pd.concat([home_players, away_players], ignore_index=True)
     player_id = st.selectbox(
@@ -251,64 +280,156 @@ def main():
         players,
         format_func=lambda x: f"{players.loc[players['id'] == x, 'full_name'].values[0]}: {players.loc[players['id'] == x, 'position'].values[0]} ({players.loc[players['id'] == x, 'team_id'].values[0]} Team)",
     )
-    player_column_id = match.player_id_to_column_id(player_id)
+    player_column_id = game.player_id_to_column_id(player_id)
+    # st.button(
+    #     "DAS allowed berechnen für Spieler",
+    #     on_click=click_button,
+    #     args=["single_player"],
+    # )
     st.button(
-        "DAS allowed berechnen für Spieler",
+        "DAS Optimize All Positions",
         on_click=click_button,
-        args=["single_player"],
+        args=["heuristic"],
+    )
+    st.button(
+        "DAS Random",
+        on_click=click_button,
+        args=["random"],
+    )
+    st.button(
+        "DAS Interpolate",
+        on_click=click_button,
+        args=["interpolate"],
     )
 
-    # with col2:
-    #     st.button("Optimierung Gesamtteam", on_click=click_button, args=["team"])
+    # if "single_player" in st.session_state and st.session_state.single_player:
+    #     start_time = time.time()
+    #     df_frameified_simulations = single_player_optimize(
+    #         game, frame_list, df_frameified, pitch_result, player_column_id
+    #     )
+    #     st.write(
+    #         f"Optimierung auf Spielerlevel in {time.time() - start_time:.2f} Sekunden"
+    #     )
+    #     start_time = time.time()
+    #     # st.dataframe(
+    #     #     df_frameified_simulations[df_frameified_simulations["frame"] == 45080]
+    #     # )
+    #     df_frameified_simulations = reduce_df_simulations(df_frameified_simulations)
+    #     st.dataframe(df_frameified_simulations)
 
-    if "single_player" in st.session_state and st.session_state.single_player:
+    if "heuristic" in st.session_state and st.session_state.heuristic:
         start_time = time.time()
-        df_frameified_simulations = single_player_optimize(
-            match, frame_list, df_frameified, pitch_result, player_column_id
+        df_frameified_simulations = single_player_heuristic(
+            game, frame_list, df_frameified, player_column_id
         )
         st.write(
-            f"Optimierung auf Spielerlevel in {time.time() - start_time:.2f} Sekunden"
+            f"Heuristik auf Spielerlevel in {time.time() - start_time:.2f} Sekunden"
         )
+        start_time = time.time()
 
+        df_frameified_simulations = reduce_df_simulations(df_frameified_simulations)
         st.dataframe(df_frameified_simulations)
 
-    # if "all_frame_clicked" in st.session_state and st.session_state.all_frame_clicked:
-    #     start_time = time.time()
-    #     df_das_changes, df_tracking_opt = all_frame_optimization(
-    #         match, frame_list, pitch_result, df_frameified
-    #     )
-    #     df_das_changes["difference"] = (
-    #         df_das_changes["das_start"] - df_das_changes["das_opt"]
-    #     )
-    #     das_home = np.mean(
-    #         df_das_changes[df_das_changes["def_team"] == "home"]["difference"]
-    #     )
-    #     das_away = np.mean(
-    #         df_das_changes[df_das_changes["def_team"] == "away"]["difference"]
-    #     )
-    #     st.dataframe(df_das_changes)
-    #     st.write(f"DAS Mean Heim Team = {das_home} | DAS Mean Away Team = {das_away}")
-    #     st.write(
-    #         f"Optimierung von {len(frame_list)} in {time.time() - start_time:.2f} Sekunden"
-    #     )
-    # -----------------------------------------------------------
+    if "random" in st.session_state and st.session_state.random:
+        start_time = time.time()
+        (
+            df_frameified_random,
+            pitch_result_random,
+            new_frame_random,
+            das_idx_rd,
+            res_idx_rd,
+        ) = random_heuristic(game, frame_list, df_frameified, player_column_id)
+        st.write(f"Random auf Spielerlevel in {time.time() - start_time:.2f} Sekunden")
+        start_time = time.time()
+
+        df_frameified_random = reduce_df_simulations(df_frameified_random)
+        st.dataframe(df_frameified_random)
+
+    if "interpolate" in st.session_state and st.session_state.interpolate:
+        start_time = time.time()
+        (
+            df_frameified_interpolate,
+            pitch_result_interpolate,
+            new_frame_inter,
+            das_idx_inter,
+            res_idx_inter,
+        ) = interpolate_heuristic(
+            game, frame_list, df_frameified, player_column_id, pitch_result
+        )
+        st.write(
+            f"Interpolation auf Spielerlevel in {time.time() - start_time:.2f} Sekunden"
+        )
+        start_time = time.time()
+
+        df_frameified_interpolate = reduce_df_simulations(df_frameified_interpolate)
+        st.dataframe(df_frameified_interpolate)
+
+    if st.button("Ergebnis in CSV speichern"):
+        if "heuristic" in st.session_state and st.session_state.heuristic:
+            if not df_frameified_simulations.empty:
+                result_to_file(
+                    (provider, game_id),
+                    player_column_id,
+                    df_frameified_simulations,
+                    frame_step_size,
+                    "all_positions",
+                )
+        if "random" in st.session_state and st.session_state.random:
+            if not df_frameified_random.empty:
+                result_to_file(
+                    (provider, game_id),
+                    player_column_id,
+                    df_frameified_random,
+                    frame_step_size,
+                    "random",
+                )
+        if "interpolate" in st.session_state and st.session_state.interpolate:
+            if not df_frameified_interpolate.empty:
+                result_to_file(
+                    (provider, game_id),
+                    player_column_id,
+                    df_frameified_interpolate,
+                    frame_step_size,
+                    "interpolate",
+                )
+
     # Match Plotting
 
-    # fig, ax = defensive_das.plot_frame(
-    #     match_optimized, frame, pitch_result_optimized, input_index, df_pre_frame
-    # )
-    # st.pyplot(fig)
-    # st.dataframe(match.tracking_data[match.tracking_data["frame"] == 105059])
-    # fig, ax = plt.subplots(figsize=(10, 6))
-    # fig, ax = plot_soccer_pitch(fig=fig, ax=ax, field_dimen=match.pitch_dimensions)
-    # fig, ax = plot_tracking_data(
-    #     match,
-    #     105059,
-    #     fig=fig,
-    #     ax=ax,
-    #     team_colors=["blue", "red"],
-    # )
-    # st.pyplot(fig)
+    frame = df_frameified_interpolate.iloc[0]["frame"]
+    game_idx = game.tracking_data[game.tracking_data["frame"] == frame].index[0]
+    pitch_result_idx = np.where(frame_list == frame)[0][0]
+    fig, ax = defensive_das.plot_frame_origin(
+        game, game_idx, pitch_result, pitch_result_idx, player_column_id
+    )
+    st.pyplot(fig)
+
+    game_random = game.copy()
+    fig, ax = defensive_das.plot_frame_random(
+        fig,
+        ax,
+        game_random,
+        game_idx,
+        pitch_result_random,
+        das_idx_rd,
+        res_idx_rd,
+        player_column_id,
+        new_frame_random,
+    )
+    st.pyplot(fig)
+
+    game_inter = game.copy()
+    fig, ax = defensive_das.plot_frame_random(
+        fig,
+        ax,
+        game_inter,
+        game_idx,
+        pitch_result_interpolate,
+        das_idx_inter,
+        res_idx_inter,
+        player_column_id,
+        new_frame_inter,
+    )
+    st.pyplot(fig)
 
 
 if __name__ == "__main__":
