@@ -1,4 +1,5 @@
 import accessible_space
+from accessible_space.interface import ReturnValueDAS
 import streamlit as st
 from databallpy import get_open_game
 
@@ -81,3 +82,12 @@ def get_dangerous_accessible_space(
         use_progress_bar=use_progress_bar,
     )
     return pitch_result
+
+
+@st.cache_data
+def get_pre_frames(df, fps, frame=None, frame_list=[]):
+    if frame:
+        df_before = df[df["frame"] == frame - fps]
+        return df_before
+    pre_frame_list = frame_list - fps
+    df_before = df[df["frame"].isin(pre_frame_list)]
