@@ -5,7 +5,6 @@ from databallpy import get_open_game
 
 @st.cache_resource
 def load_game_data(source, game_id):
-    st.write(f"provider {source} mit id: {game_id}")
     return get_open_game(provider=source, game_id=game_id)
 
 

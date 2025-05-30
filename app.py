@@ -7,6 +7,7 @@ import time
 import defensive_das
 from databallpy.utils.constants import OPEN_GAME_IDS_DFL
 from pathlib import Path
+import dashbord
 
 
 def load_game(provider, game_id):
@@ -432,5 +433,11 @@ def main():
     st.pyplot(fig)
 
 
+def main_new():
+    st.set_page_config(layout="wide", page_title="DAS Optimizer")
+    dashbord.render()
+
+
 if __name__ == "__main__":
-    main()
+    # main()
+    main_new()
