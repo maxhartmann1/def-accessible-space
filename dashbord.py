@@ -48,7 +48,7 @@ def render():
     st.divider()
 
     # Optimierung Spielerposition
-    render_player_optimization(
+    sim_result = render_player_optimization(
         game,
         df_frameified,
         pitch_result,
@@ -166,7 +166,7 @@ def handle_das_result(df_frameified, frame_step_size, provider, game_id):
 
 
 def render_player_optimization(
-    game, df_frameified, pitch_result, step_size, provider, game_id, frame_list
+    game, df_frameified, pitch_result, frame_step_size, provider, game_id, frame_list
 ):
     st.write("## Optimale Position für Verteidiger")
 
@@ -192,23 +192,137 @@ def render_player_optimization(
     methods = st.multiselect(
         "Optimierungsmethode wählen", ["all_positions", "random", "interpolate"]
     )
+    with st.expander("Parameter setzen"):
+        max_radius, opt_step_size, min_teammate_dist, sample_n = (
+            get_default_parameters()
+        )
+        render_parameter_selection(
+            max_radius, opt_step_size, min_teammate_dist, sample_n
+        )
+        if st.button("Optimierung mit individuellen Parametern starten"):
+            st.session_state.run_parameter_optimization = True
 
     if st.button("Optimierung starten"):
         st.session_state.run_optimization = True
 
     if st.session_state.get("run_optimization"):
         df_pre_frames = prepare_optimization(game, frame_list)
+        sim_result = {}
 
-        if "all_positions" in methods:
-            st.write("Run all_positions")
+        for method in methods:
+            simulation_path = get_simulation_path(
+                game_id, frame_step_size, player_column_id, method
+            )
 
-        if "random" in methods:
-            st.write("Run random")
+            df_path = simulation_path / "df_sim.csv"
+            pitch_result_path = simulation_path / "pitch_res.pkl"
+            if df_path.exists() and pitch_result_path.exists():
+                df_frameified_simulations = pd.read_csv(df_path)
+                pitch_result_optimized = joblib.load(pitch_result_path)
+                st.success("Pitch Result geladen aus Cache.")
+            else:
+                df_frameified_simulations, pitch_result_optimized = (
+                    defensive_das.optimize_player_position(
+                        df_frameified,
+                        df_pre_frames,
+                        frame_list,
+                        player_column_id,
+                        pitch_result,
+                        method,
+                    )
+                )
+                df_frameified_simulations.to_csv(df_path, index=False)
+                joblib.dump(pitch_result_optimized, pitch_result_path)
+                st.success("Pitch Result berechnet und gespeichert.")
 
-        if "interpolate" in methods:
-            st.write("Run interpolate")
+            df_frameified_simulations = reduce_df_simulations(df_frameified_simulations)
+            sim_result[method] = (df_frameified_simulations, pitch_result_optimized)
+
+        # if "all_positions" in methods:
+        #     df_frameified_all_positions = defensive_das.optimize_player_position(
+        #         df_frameified,
+        #         df_pre_frames,
+        #         frame_list,
+        #         player_column_id,
+        #         pitch_result,
+        #         method="all_positions",
+        #     )
+
+        # if "random" in methods:
+        #     df_frameified_random, pitch_result_random = (
+        #         defensive_das.optimize_player_position(
+        #             df_frameified,
+        #             df_pre_frames,
+        #             frame_list,
+        #             player_column_id,
+        #             pitch_result,
+        #             method="random",
+        #         )
+        #     )
+        #     st.write(df_frameified_random)
+        #     st.write(pitch_result_random)
+
+        # if "interpolate" in methods:
+        #     df_frameified_interpolate = defensive_das.optimize_player_position(
+        #         df_frameified,
+        #         df_pre_frames,
+        #         frame_list,
+        #         player_column_id,
+        #         pitch_result,
+        #         method="interpolate",
+        #     )
+
+        # st.write(sim_result)
+
+    if st.session_state.get("run_parameter_optimization"):
+        df_pre_frames = prepare_optimization(game, frame_list)
+        sim_result = {}
+        max_radius = st.session_state.get("max_radius")
+        opt_step_size = st.session_state.get("opt_step_size")
+        min_teammate_dist = st.session_state.get("min_teammate_dist")
+        consider_teammates = st.session_state.get("consider_teammates")
+        sample_n = st.session_state.get("sample_n")
+        file_prefix = f"{max_radius}_{opt_step_size}_{min_teammate_dist}_{sample_n}_"
+
+        for method in methods:
+            simulation_path = get_simulation_path(
+                game_id, frame_step_size, player_column_id, method
+            )
+
+            df_path = simulation_path / f"{file_prefix}df_sim.csv"
+            pitch_result_path = simulation_path / f"{file_prefix}pitch_res.pkl"
+            if df_path.exists() and pitch_result_path.exists():
+                df_frameified_simulations = pd.read_csv(df_path)
+                pitch_result_optimized = joblib.load(pitch_result_path)
+                st.success("Pitch Result geladen aus Cache.")
+            else:
+                df_frameified_simulations, pitch_result_optimized = (
+                    defensive_das.optimize_player_position(
+                        df_frameified,
+                        df_pre_frames,
+                        frame_list,
+                        player_column_id,
+                        pitch_result,
+                        method,
+                        min_teammate_dist=min_teammate_dist,
+                        sample_n=sample_n,
+                        max_radius=max_radius,
+                        step_size=opt_step_size,
+                        consider_teammate_dist=consider_teammates,
+                    )
+                )
+                df_frameified_simulations.to_csv(df_path, index=False)
+                joblib.dump(pitch_result_optimized, pitch_result_path)
+                st.success("Pitch Result berechnet und gespeichert.")
+
+            df_frameified_simulations = reduce_df_simulations(df_frameified_simulations)
+            sim_result[method] = (df_frameified_simulations, pitch_result_optimized)
 
     st.session_state.run_optimization = False
+    st.session_state.run_parameter_optimization = False
+
+    if st.session_state.get("run_optimization"):
+        return sim_result
 
 
 def prepare_optimization(game, frame_list):
@@ -216,3 +330,53 @@ def prepare_optimization(game, frame_list):
     df_pre_frames = defensive_das.get_pre_frames(
         df, game.tracking_data.frame_rate, frame_list=frame_list
     )
+    return df_pre_frames
+
+
+def get_simulation_path(game_id, frame_step_size, player_id, method):
+    simulation_path = (
+        Path("cache/simulations")
+        / f"{game_id}/step{frame_step_size}/{player_id}/{method}"
+    )
+    simulation_path.mkdir(parents=True, exist_ok=True)
+    return simulation_path
+
+
+def reduce_df_simulations(df_frameified_simulations):
+    df_frameified_simulations = df_frameified_simulations[
+        df_frameified_simulations["opt_player"]
+        == df_frameified_simulations["player_id"]
+    ][["player_id", "frame", "DAS", "DAS_new", "new_frame"]]
+    df_frameified_simulations["DAS_potential"] = (
+        df_frameified_simulations["DAS"] - df_frameified_simulations["DAS_new"]
+    ).clip(lower=0)
+    split_cols = df_frameified_simulations["new_frame"].str.split("_", expand=True)
+    df_frameified_simulations["move_x"] = split_cols.iloc[:, -2].astype(float)
+    df_frameified_simulations["move_y"] = split_cols.iloc[:, -1].astype(float)
+    df_frameified_simulations["distance"] = np.sqrt(
+        np.square(df_frameified_simulations["move_x"])
+        + np.square(df_frameified_simulations["move_y"])
+    )
+    return df_frameified_simulations
+
+
+def get_default_parameters():
+    return defensive_das.get_default_parameters()
+
+
+def render_parameter_selection(max_radius, opt_step_size, min_teammate_dist, sample_n):
+    st.number_input("Maximaler Radius", 0.0, 15.0, max_radius, 0.1, key="max_radius")
+    st.number_input("Step Size", 0.0, 2.0, opt_step_size, 0.01, key="opt_step_size")
+    st.toggle("Consider Teammate Distance", True, key="consider_teammates")
+    if st.session_state.get("consider_teammates"):
+        st.number_input(
+            "Min Distance to Teammates",
+            0.1,
+            5.0,
+            min_teammate_dist,
+            0.1,
+            key="min_teammate_dist",
+        )
+    else:
+        st.session_state.min_teammate_dist = 0
+    st.number_input("Sample Size", 1, 100, sample_n, 1, key="sample_n")
