@@ -10,47 +10,52 @@ def visualize():
         "<h1 style='text-align: center;'>DAS Potential Ansicht</h1>",
         unsafe_allow_html=True,
     )
-    basic_path = Path("./simulation_results")
+    basic_path = Path("./simulation_results/reduced")
 
-    provider_list = [x.name for x in basic_path.iterdir() if x.is_dir()]
-    provider = st.selectbox(
-        "Provider wählen", provider_list, format_func=lambda x: x.capitalize()
-    )
-    provider_path = basic_path / provider
-
-    match_list = [x.name for x in provider_path.iterdir() if x.is_dir()]
+    match_list = [x.name for x in basic_path.iterdir() if x.is_dir()]
     match = st.selectbox(
         "Match wählen", match_list, format_func=lambda x: x.capitalize()
     )
-    match_path = provider_path / match
+    match_path = basic_path / match
 
-    frame_frequence_list = [x.name for x in match_path.iterdir() if x.is_dir()]
-    frame_frequence = st.selectbox(
-        "Frame Frequenz wählen",
-        frame_frequence_list,
+    frame_step_list = [x.name for x in match_path.iterdir() if x.is_dir()]
+    frame_step = st.selectbox(
+        "Frame Step wählen",
+        frame_step_list,
+        format_func=lambda x: x.lstrip("step"),
+    )
+    frame_step_path = match_path / frame_step
+
+    player_list = [x.name for x in frame_step_path.iterdir() if x.is_dir()]
+    player = st.selectbox(
+        "Spieler wählen",
+        player_list,
         format_func=lambda x: x.capitalize(),
     )
-    frame_frequence_path = match_path / frame_frequence
+    player_path = frame_step_path / player
 
-    method_list = [x.name for x in frame_frequence_path.iterdir() if x.is_dir()]
-    player_files_list = []
-    player_list = []
+    method_list = [x.name for x in player_path.iterdir() if x.is_dir()]
+    files_list = []
+    parameter_list = []
     for method in method_list:
-        method_path = frame_frequence_path / method
-        player_files_list = player_files_list + list(method_path.glob("*.csv"))
-        player_list = player_list + [player.stem for player in method_path.glob("*csv")]
-    player_list = list(set(player_list))
-    df_all_players_random = pd.concat(
-        (pd.read_csv(f) for f in player_files_list if "random" in str(f)),
+        method_path = player_path / method
+        files_list = files_list + list(method_path.glob("*.csv"))
+        parameter_list = parameter_list + [
+            method.stem for method in method_path.glob("*csv")
+        ]
+    parameter_list = list(set(parameter_list))
+    df_random_results = pd.concat(
+        (pd.read_csv(f) for f in files_list if "random" in str(f)),
         ignore_index=True,
     )
-    df_all_players_random["method"] = "random"
+    df_random_results
+    df_random_results["method"] = "random"
     df_all_players_interpolate = pd.concat(
-        (pd.read_csv(f) for f in player_files_list if "interpolate" in str(f)),
+        (pd.read_csv(f) for f in files_list if "interpolate" in str(f)),
         ignore_index=True,
     )
     df_all_players_interpolate["method"] = "interpolate"
-    df_all_players_grouped = df_all_players_random.groupby("player_id").agg(
+    df_all_players_grouped = df_random_results.groupby("player_id").agg(
         {"DAS_potential": ["mean", "min", "max", "std", "median"]}
     )
 
@@ -58,9 +63,7 @@ def visualize():
     selected_player = st.selectbox("Spieler auswählen", player_list)
     df_filtered = pd.concat(
         [
-            df_all_players_random[
-                df_all_players_random["player_id"] == selected_player
-            ],
+            df_random_results[df_random_results["player_id"] == selected_player],
             df_all_players_interpolate[
                 df_all_players_interpolate["player_id"] == selected_player
             ],

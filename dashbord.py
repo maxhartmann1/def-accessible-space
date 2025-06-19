@@ -205,9 +205,9 @@ def render_player_optimization(
     if st.button("Optimierung starten"):
         st.session_state.run_optimization = True
 
+    sim_result = {}
     if st.session_state.get("run_optimization"):
         df_pre_frames = prepare_optimization(game, frame_list)
-        sim_result = {}
 
         for method in methods:
             simulation_path = get_simulation_path(
@@ -236,7 +236,7 @@ def render_player_optimization(
                 st.success("Pitch Result berechnet und gespeichert.")
 
             df_frameified_simulations = reduce_df_simulations(df_frameified_simulations)
-            sim_result[method] = (df_frameified_simulations, pitch_result_optimized)
+            sim_result[method] = df_frameified_simulations
 
         # if "all_positions" in methods:
         #     df_frameified_all_positions = defensive_das.optimize_player_position(
@@ -276,7 +276,7 @@ def render_player_optimization(
 
     if st.session_state.get("run_parameter_optimization"):
         df_pre_frames = prepare_optimization(game, frame_list)
-        sim_result = {}
+
         max_radius = st.session_state.get("max_radius")
         opt_step_size = st.session_state.get("opt_step_size")
         min_teammate_dist = st.session_state.get("min_teammate_dist")
@@ -316,13 +316,13 @@ def render_player_optimization(
                 st.success("Pitch Result berechnet und gespeichert.")
 
             df_frameified_simulations = reduce_df_simulations(df_frameified_simulations)
-            sim_result[method] = (df_frameified_simulations, pitch_result_optimized)
+            sim_result[method] = df_frameified_simulations
 
     st.session_state.run_optimization = False
     st.session_state.run_parameter_optimization = False
 
-    if st.session_state.get("run_optimization"):
-        return sim_result
+    save_sim_result(sim_result, game_id, frame_step_size, player_column_id)
+    return sim_result
 
 
 def prepare_optimization(game, frame_list):
@@ -380,3 +380,26 @@ def render_parameter_selection(max_radius, opt_step_size, min_teammate_dist, sam
     else:
         st.session_state.min_teammate_dist = 0
     st.number_input("Sample Size", 1, 100, sample_n, 1, key="sample_n")
+
+
+def save_sim_result(sim_result, game_id, frame_step_size, player_id):
+
+    for key in sim_result:
+        path = (
+            Path("simulation_results/reduced/")
+            / f"{game_id}/step{frame_step_size}/{player_id}/{key}"
+        )
+        path.mkdir(parents=True, exist_ok=True)
+        max_radius = st.session_state.get("max_radius")
+        opt_step_size = st.session_state.get("opt_step_size")
+        min_teammate_dist = st.session_state.get("min_teammate_dist")
+        sample_n = st.session_state.get("sample_n")
+        file_name = (
+            f"{max_radius}_{opt_step_size}_{min_teammate_dist}_{sample_n}_reducedDF.csv"
+        )
+
+        df_path = path / file_name
+
+        sim_result[key].to_csv(df_path, index=False)
+
+        st.success("Reduzierter Frame gespeichert.")
