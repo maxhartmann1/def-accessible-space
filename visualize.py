@@ -48,16 +48,15 @@ def visualize():
         (pd.read_csv(f) for f in files_list if "random" in str(f)),
         ignore_index=True,
     )
-    df_random_results
     df_random_results["method"] = "random"
     df_all_players_interpolate = pd.concat(
         (pd.read_csv(f) for f in files_list if "interpolate" in str(f)),
         ignore_index=True,
     )
     df_all_players_interpolate["method"] = "interpolate"
-    df_all_players_grouped = df_random_results.groupby("player_id").agg(
-        {"DAS_potential": ["mean", "min", "max", "std", "median"]}
-    )
+    # df_all_players_grouped = df_random_results.groupby("player_id").agg(
+    #     {"DAS_potential": ["mean", "min", "max", "std", "median"]}
+    # )
 
     # Möge die Visualisierung beginnen
     selected_player = st.selectbox("Spieler auswählen", player_list)
@@ -69,7 +68,7 @@ def visualize():
             ],
         ]
     )
-
+    st.dataframe(df_filtered)
     chart = (
         alt.Chart(df_filtered)
         .mark_line()
