@@ -44,6 +44,14 @@ def render():
         df_frameified, provider, game_id, frame_step_size
     )
     df_frameified, frame_amount, frame_list = attach_das(df_frameified, pitch_result)
+
+    frame_list_path = (
+        Path("cache") / f"frame_list_{provider}_{game_id}_step{frame_step_size}.csv"
+    )
+    frame_list_path.parent.mkdir(parents=True, exist_ok=True)
+    if not frame_list_path.exists():
+        np.savetxt(frame_list_path, frame_list, delimiter=",", fmt="%.0f")
+
     handle_das_result(df_frameified, frame_step_size, provider, game_id)
     st.divider()
 
@@ -80,7 +88,7 @@ def render_game_selector(games, col):
             "Open Source Match auswählen",
             games,
             index=7,
-            format_func=lambda x: games[x],
+            format_func=lambda x: games[x] + f": {x}",
         )
     provider = "metrica" if game_id == "metrica" else "dfl"
     return provider, game_id
@@ -102,7 +110,7 @@ def render_game_info(game, provider, col):
 def render_frame_step_selector(game, col):
     with col:
         if "frame_filter_step" not in st.session_state:
-            st.session_state.frame_filter_step = game.tracking_data.frame_rate * 60
+            st.session_state.frame_filter_step = game.tracking_data.frame_rate * 5
         frame_filter_step = st.number_input(
             "Step size für Frames",
             min_value=1,
@@ -221,7 +229,7 @@ def render_player_optimization(
                 pitch_result_optimized = joblib.load(pitch_result_path)
                 st.success("Pitch Result geladen aus Cache.")
             else:
-                df_frameified_simulations, pitch_result_optimized = (
+                df_frameified_simulations, pitch_result_optimized, new_frame_list = (
                     defensive_das.optimize_player_position(
                         df_frameified,
                         df_pre_frames,
@@ -233,6 +241,9 @@ def render_player_optimization(
                 )
                 df_frameified_simulations.to_csv(df_path, index=False)
                 joblib.dump(pitch_result_optimized, pitch_result_path)
+                save_new_frame_list(
+                    new_frame_list, method, game_id, frame_step_size, player_column_id
+                )
                 st.success("Pitch Result berechnet und gespeichert.")
 
             df_frameified_simulations = reduce_df_simulations(df_frameified_simulations)
@@ -296,7 +307,7 @@ def render_player_optimization(
                 pitch_result_optimized = joblib.load(pitch_result_path)
                 st.success("Pitch Result geladen aus Cache.")
             else:
-                df_frameified_simulations, pitch_result_optimized = (
+                df_frameified_simulations, pitch_result_optimized, new_frame_list = (
                     defensive_das.optimize_player_position(
                         df_frameified,
                         df_pre_frames,
@@ -313,6 +324,9 @@ def render_player_optimization(
                 )
                 df_frameified_simulations.to_csv(df_path, index=False)
                 joblib.dump(pitch_result_optimized, pitch_result_path)
+                save_new_frame_list(
+                    new_frame_list, method, game_id, frame_step_size, player_column_id
+                )
                 st.success("Pitch Result berechnet und gespeichert.")
 
             df_frameified_simulations = reduce_df_simulations(df_frameified_simulations)
@@ -322,6 +336,26 @@ def render_player_optimization(
     st.session_state.run_parameter_optimization = False
 
     save_sim_result(sim_result, game_id, frame_step_size, player_column_id)
+
+    # if st.button("Neue Frame Liste erstellen"):
+    #     df_pre_frames = prepare_optimization(game, frame_list)
+    #     for method in methods:
+    #         frame_list_path = (
+    #             Path("cache")
+    #             / f"simulations/{game_id}/step{frame_step_size}/{player_column_id}/{method}/frame_list_new.csv"
+    #         )
+    #         frame_list_path.parent.mkdir(parents=True, exist_ok=True)
+    #         if not frame_list_path.exists():
+    #             new_frame_list = defensive_das.get_new_frame_list(
+    #                 df_frameified,
+    #                 df_pre_frames,
+    #                 frame_list,
+    #                 player_column_id,
+    #                 pitch_result,
+    #                 method,
+    #                 step_size=opt_step_size,
+    #             )
+    #             np.savetxt(frame_list_path, new_frame_list, delimiter=",", fmt="%s")
     return sim_result
 
 
@@ -403,3 +437,14 @@ def save_sim_result(sim_result, game_id, frame_step_size, player_id):
         sim_result[key].to_csv(df_path, index=False)
 
         st.success("Reduzierter Frame gespeichert.")
+
+
+def save_new_frame_list(
+    new_frame_list, method, game_id, frame_step_size, player_column_id
+):
+    frame_list_path = (
+        Path("cache")
+        / f"simulations/{game_id}/step{frame_step_size}/{player_column_id}/{method}/frame_list_new.csv"
+    )
+    frame_list_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(frame_list_path, new_frame_list, delimiter=",", fmt="%s")
