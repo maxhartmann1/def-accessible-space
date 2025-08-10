@@ -891,7 +891,7 @@ def get_dangerous_accessible_space(
         PASSERS = df_tracking.drop_duplicates(frame_col)[player_in_possession_col].values  # F
     else:
         if respect_offside:
-            warnings.warn("If 'respect_offside' is set to True, 'player_in_possession_col' should be set to the column containing the passer, otherwise ball carrier might be identified as offside.")
+            warnings.warn("If 'respect_offside' is set to True, 'player_in_possession_col' should be set to the column containing the ball carrier, otherwise the ball carrier might be mis-identified as offside.")
         PASSERS = None
     # if exclude_passer:
     #     if passer_col not in df_tracking.columns:
