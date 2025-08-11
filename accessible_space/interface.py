@@ -880,7 +880,7 @@ def get_dangerous_accessible_space(
 
     _check_ball_in_tracking_data(df_tracking, player_col, ball_player_id)
 
-    df_tracking = df_tracking.copy()
+    df_tracking = df_tracking[df_tracking[team_in_possession_col].notna()].copy()  # DAS is only valid when a team has possession
 
     PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = transform_into_arrays(
         df_tracking, frame_col=frame_col, player_col=player_col,
@@ -1124,7 +1124,7 @@ def infer_playing_direction(
         greater_x_team = [team for team in teams if team != smaller_x_team][0]
         playing_direction[period_id] = {smaller_x_team: 1, greater_x_team: -1}
 
-    df = df_tracking[[frame_col, _period_col, team_in_possession_col]].dropna(how="any").drop_duplicates(subset=[frame_col, _period_col, team_in_possession_col])
+    df = df_tracking[[frame_col, _period_col, team_in_possession_col]].dropna(how="any").drop_duplicates(subset=[frame_col, _period_col, team_in_possession_col])  # not sure if copy() might be necessary
 
     for period_id in playing_direction:
         i_period = (df[_period_col] == period_id)
@@ -1132,7 +1132,7 @@ def infer_playing_direction(
             i_f = i_period & (df[team_in_possession_col] == team_id)
             df.loc[i_f, "playing_direction"] = direction
 
-    return df_tracking.merge(df[[_period_col, frame_col, "playing_direction"]], on=[_period_col, frame_col], how="left")["playing_direction"]
+    return df_tracking.reset_index().merge(df[[_period_col, frame_col, "playing_direction"]].drop_duplicates(), on=[_period_col, frame_col], how="left").set_index("index")["playing_direction"]
 
 
 def plot_expected_completion_surface(simulation_result: SimulationResult, frame_index=0, attribute="attack_poss_density", player_index=None, color="blue", plot_gridpoints=True):  # TODO gridpoints False
