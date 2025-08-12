@@ -878,6 +878,12 @@ def get_dangerous_accessible_space(
             raise ValueError("Inferring attacking direction but 'period_col' is unset. If you have data across multiple halfs, specify 'period_col', otherwise pass 'period_col'=None.")
         period_col = None
 
+    if period_col is not None and period_col not in df_tracking.columns:
+        raise ValueError(f"Specified column period_col='{period_col}' is not found in tracking data.")
+
+    if period_col == frame_col:
+        raise ValueError(f"Passed arguments period_col='{period_col}' and frame_col='{frame_col}' are the same column.")
+
     _check_ball_in_tracking_data(df_tracking, player_col, ball_player_id)
 
     df_tracking = df_tracking[df_tracking[team_in_possession_col].notna()].copy()  # DAS is only valid when a team has possession
