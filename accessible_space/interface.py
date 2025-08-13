@@ -888,6 +888,9 @@ def get_dangerous_accessible_space(
 
     df_tracking = df_tracking[df_tracking[team_in_possession_col].notna()].copy()  # DAS is only valid when a team has possession
 
+    if df_tracking.empty:
+        raise ValueError("Tracking data is empty or contains no non-NaN team in possession.")
+
     PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = transform_into_arrays(
         df_tracking, frame_col=frame_col, player_col=player_col,
         ball_player_id=ball_player_id, team_col=team_col, x_col=x_col, y_col=y_col,
@@ -1002,7 +1005,7 @@ def get_individual_dangerous_accessible_space(
     # Tracking schema
     frame_col="frame_id", player_col="player_id", ball_player_id="ball", team_col="team_id", x_col="x",
     y_col="y", vx_col="vx", vy_col="vy", attacking_direction_col=None, period_col=_unset,
-    team_in_possession_col="team_in_possession", passer_to_exclude_col=None,
+    team_in_possession_col="team_in_possession", player_in_possession_col=None,
 
     # Pitch coordinate system
     x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
@@ -1051,7 +1054,7 @@ def get_individual_dangerous_accessible_space(
     ret = get_dangerous_accessible_space(
         df_tracking,
         frame_col, player_col, ball_player_id, team_col, x_col, y_col, vx_col, vy_col, attacking_direction_col,
-        period_col, team_in_possession_col, passer_to_exclude_col, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max,
+        period_col, team_in_possession_col, player_in_possession_col, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max,
         infer_attacking_direction, exclude_passer, respect_offside, danger_weight, chunk_size, return_cropped_result, additional_fields_to_return,
         use_progress_bar, n_angles, phi_offset, n_v0, v0_min, v0_max, pass_start_location_offset, time_offset_ball,
         radial_gridsize, b0, b1, player_velocity, keep_inertial_velocity, use_max, v_max, a_max, inertial_seconds,
@@ -1064,17 +1067,14 @@ def get_individual_dangerous_accessible_space(
     areas = integrate_surfaces(ret.simulation_result).player_poss  # F x P
     dangeorus_areas = integrate_surfaces(ret.dangerous_result).player_poss  # F x P
 
-    def foo(x):
-        return dangeorus_areas[int(x["frame_index"]), int(x["player_index"])]
-
     i_notna = ret.frame_index.notna() & ret.player_index.notna()
-    df = pd.DataFrame(data=np.array([ret.frame_index, ret.player_index]).transpose(), columns=["frame_index", "player_index"])
+    df = pd.DataFrame(data=np.array([ret.frame_index, ret.player_index]).transpose(), columns=["frame_index", "player_index"], index=ret.frame_index.index)
 
     player_acc_space = pd.Series(index=df_tracking.index, dtype=np.float64)
     player_acc_space[i_notna] = df.loc[i_notna].apply(lambda x: areas[int(x["frame_index"]), int(x["player_index"])], axis=1)
 
     player_das = pd.Series(index=df_tracking.index, dtype=np.float64)
-    player_das[i_notna] = df.loc[i_notna].apply(lambda x: foo(x), axis=1)
+    player_das[i_notna] = df.loc[i_notna].apply(lambda x: dangeorus_areas[int(x["frame_index"]), int(x["player_index"])], axis=1)
 
     return ReturnValueIndividualDAS(ret.acc_space, ret.das, player_acc_space, player_das, ret.frame_index, ret.player_index, ret.simulation_result, ret.dangerous_result)
 
