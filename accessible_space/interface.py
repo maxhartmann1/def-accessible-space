@@ -1067,8 +1067,8 @@ def get_individual_dangerous_accessible_space(
     areas = integrate_surfaces(ret.simulation_result).player_poss  # F x P
     dangeorus_areas = integrate_surfaces(ret.dangerous_result).player_poss  # F x P
 
-    i_notna = ret.frame_index.notna() & ret.player_index.notna()
-    df = pd.DataFrame(data=np.array([ret.frame_index, ret.player_index]).transpose(), columns=["frame_index", "player_index"], index=ret.frame_index.index)
+    i_notna = df_tracking["frame_index"].notna() & df_tracking["player_index"].notna()
+    df = pd.DataFrame(data=np.array([df_tracking["frame_index"], df_tracking["player_index"]]).transpose(), columns=["frame_index", "player_index"], index=df_tracking.index)
 
     player_acc_space = pd.Series(index=df_tracking.index, dtype=np.float64)
     player_acc_space[i_notna] = df.loc[i_notna].apply(lambda x: areas[int(x["frame_index"]), int(x["player_index"])], axis=1)
