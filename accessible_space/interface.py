@@ -1124,21 +1124,21 @@ def infer_playing_direction(
     else:
         df_tracking_for_mean = df_tracking
 
+    playing_direction_map = []
     for period_id, df_tracking_period in df_tracking_for_mean.groupby(_period_col):
         x_mean = df_tracking_period.groupby(team_col)[x_col].mean()
         smaller_x_team = x_mean.idxmin()
         greater_x_team = [team for team in teams if team != smaller_x_team][0]
         playing_direction[period_id] = {smaller_x_team: 1, greater_x_team: -1}
+        playing_direction_map.append({_period_col: period_id, team_in_possession_col: smaller_x_team, "playing_direction": 1.0})
+        playing_direction_map.append({_period_col: period_id, team_in_possession_col: greater_x_team, "playing_direction": -1.0})
 
-    df = df_tracking[[frame_col, _period_col, team_in_possession_col]].dropna(how="any").drop_duplicates(subset=[frame_col, _period_col, team_in_possession_col])  # not sure if copy() might be necessary
-
-    for period_id in playing_direction:
-        i_period = (df[_period_col] == period_id)
-        for team_id, direction in playing_direction[period_id].items():
-            i_f = i_period & (df[team_in_possession_col] == team_id)
-            df.loc[i_f, "playing_direction"] = direction
-
-    return df_tracking.reset_index().merge(df[[_period_col, frame_col, "playing_direction"]].drop_duplicates(), on=[_period_col, frame_col], how="left").set_index("index")["playing_direction"]
+    df_map = pd.DataFrame(playing_direction_map)
+    return df_tracking.merge(
+        df_map,
+        on=[_period_col, team_in_possession_col],
+        how="left"
+    )["playing_direction"]
 
 
 def plot_expected_completion_surface(simulation_result: SimulationResult, frame_index=0, attribute="attack_poss_density", player_index=None, color="blue", plot_gridpoints=True):  # TODO gridpoints False
