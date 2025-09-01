@@ -1117,7 +1117,7 @@ def infer_playing_direction(
         teams = [team for team in teams if team != ball_team]
 
     if len(teams) != 2:
-        warnings.warn(f"Did not find exactly 2 teams while inferring playing direction: {teams}, so inferred playing direction may be wrong. Check if data has data from exactly 2 teams and specify 'ball_team' if the ball has a non-None team id.")
+        ValueError(f"Did not find exactly 2 teams while inferring playing direction: {teams}, so inferred playing direction may be wrong. Check if data has data from exactly 2 teams and specify 'ball_team' if the ball has a non-None team id.")
 
     if ball_team is not None:
         df_tracking_for_mean = df_tracking[df_tracking[team_col] != ball_team]
