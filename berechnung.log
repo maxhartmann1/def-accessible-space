@@ -1,0 +1,554 @@
+2025-09-03 12:14:50,310 [INFO] Pitch Result bei step size 25 für J03WQQ in 116.5604 Sekunden
+2025-09-03 12:17:13,694 [INFO] Frames erstellen für home_25 mit 1003 Frames bei step size 25 für J03WQQ mit random in 142.2450 Sekunden
+2025-09-03 12:54:04,434 [INFO] Pitch Result berechnen für home_25 mit 1003 Frames für J03WQQ in 2210.7310 Sekunden
+2025-09-03 12:54:04,440 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 12:57:18,037 [INFO] Pitch Result bei step size 125 für J03WQQ in 25.2393 Sekunden
+2025-09-03 12:57:37,256 [INFO] Frames erstellen für home_25 mit 201 Frames bei step size 125 für J03WQQ mit random in 18.6694 Sekunden
+2025-09-03 13:02:29,625 [INFO] Pitch Result berechnen für home_25 mit 201 Frames für J03WQQ in 292.3684 Sekunden
+2025-09-03 13:02:29,628 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 13:35:56,787 [INFO] Frames erstellen für home_25 mit 201 Frames bei step size 125 für J03WQQ mit random in 52.2024 Sekunden
+2025-09-03 13:51:36,463 [INFO] Pitch Result berechnen für home_25 mit 201 Frames für J03WQQ in 939.6736 Sekunden
+2025-09-03 13:51:36,465 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 50}
+2025-09-03 13:57:17,979 [INFO] Frames erstellen für home_25 mit 201 Frames bei step size 125 für J03WQQ mit all_positions in 82.7304 Sekunden
+2025-09-03 14:24:27,977 [INFO] Pitch Result berechnen für home_25 mit 201 Frames für J03WQQ in 1629.9930 Sekunden
+2025-09-03 14:24:27,981 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 14:31:40,431 [INFO] Frames erstellen für home_13 mit 31 Frames bei step size 125 für J03WQQ mit random in 2.8612 Sekunden
+2025-09-03 14:32:14,535 [INFO] Pitch Result berechnen für home_13 mit 31 Frames für J03WQQ in 34.1022 Sekunden
+2025-09-03 14:32:14,535 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 14:32:37,754 [INFO] Frames erstellen für home_28 mit 201 Frames bei step size 125 für J03WQQ mit random in 22.2998 Sekunden
+2025-09-03 14:37:37,327 [INFO] Pitch Result berechnen für home_28 mit 201 Frames für J03WQQ in 299.5730 Sekunden
+2025-09-03 14:37:37,328 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 14:37:45,657 [INFO] Frames erstellen für home_3 mit 2 Frames bei step size 125 für J03WQQ mit random in 0.2248 Sekunden
+2025-09-03 14:37:47,788 [INFO] Pitch Result berechnen für home_3 mit 2 Frames für J03WQQ in 2.1306 Sekunden
+2025-09-03 14:37:47,788 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 14:37:52,976 [INFO] Frames erstellen für home_11 mit 52 Frames bei step size 125 für J03WQQ mit random in 5.0801 Sekunden
+2025-09-03 14:38:59,316 [INFO] Pitch Result berechnen für home_11 mit 52 Frames für J03WQQ in 66.3398 Sekunden
+2025-09-03 14:38:59,318 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 14:39:22,085 [INFO] Frames erstellen für home_29 mit 201 Frames bei step size 125 für J03WQQ mit random in 20.9821 Sekunden
+2025-09-03 14:45:15,814 [INFO] Pitch Result berechnen für home_29 mit 201 Frames für J03WQQ in 353.7285 Sekunden
+2025-09-03 14:45:15,815 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 14:45:41,488 [INFO] Frames erstellen für home_9 mit 149 Frames bei step size 125 für J03WQQ mit random in 17.2051 Sekunden
+2025-09-03 14:48:33,136 [INFO] Pitch Result berechnen für home_9 mit 149 Frames für J03WQQ in 171.6477 Sekunden
+2025-09-03 14:48:33,137 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 14:49:05,586 [INFO] Frames erstellen für home_19 mit 199 Frames bei step size 125 für J03WQQ mit random in 27.0312 Sekunden
+2025-09-03 14:54:34,912 [INFO] Pitch Result berechnen für home_19 mit 199 Frames für J03WQQ in 329.3249 Sekunden
+2025-09-03 14:54:34,914 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 14:55:03,239 [INFO] Frames erstellen für home_33 mit 201 Frames bei step size 125 für J03WQQ mit random in 21.5233 Sekunden
+2025-09-03 15:00:02,926 [INFO] Pitch Result berechnen für home_33 mit 201 Frames für J03WQQ in 299.6862 Sekunden
+2025-09-03 15:00:02,928 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 15:00:27,479 [INFO] Frames erstellen für home_23 mit 170 Frames bei step size 125 für J03WQQ mit random in 18.0910 Sekunden
+2025-09-03 15:04:12,193 [INFO] Pitch Result berechnen für home_23 mit 170 Frames für J03WQQ in 224.7141 Sekunden
+2025-09-03 15:04:12,194 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 15:04:40,021 [INFO] Frames erstellen für home_15 mit 201 Frames bei step size 125 für J03WQQ mit random in 21.4154 Sekunden
+2025-09-03 15:10:16,662 [INFO] Pitch Result berechnen für home_15 mit 201 Frames für J03WQQ in 336.6391 Sekunden
+2025-09-03 15:10:16,665 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 15:10:40,620 [INFO] Frames erstellen für home_7 mit 149 Frames bei step size 125 für J03WQQ mit random in 17.3081 Sekunden
+2025-09-03 15:13:34,845 [INFO] Pitch Result berechnen für home_7 mit 149 Frames für J03WQQ in 174.2243 Sekunden
+2025-09-03 15:13:34,846 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 15:14:00,066 [INFO] Frames erstellen für home_5 mit 201 Frames bei step size 125 für J03WQQ mit random in 20.4761 Sekunden
+2025-09-03 15:19:21,408 [INFO] Pitch Result berechnen für home_5 mit 201 Frames für J03WQQ in 321.3408 Sekunden
+2025-09-03 15:19:21,410 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-03 15:19:49,709 [INFO] Frames erstellen für home_8 mit 201 Frames bei step size 125 für J03WQQ mit random in 21.6672 Sekunden
+2025-09-08 12:05:55,307 [INFO] Frames erstellen für home_25 mit 201 Frames bei step size 125 für J03WQQ mit random in 20.1925 Sekunden
+2025-09-08 12:10:31,883 [INFO] Pitch Result berechnen für home_25 mit 201 Frames für J03WQQ in 276.5748 Sekunden
+2025-09-08 12:10:31,884 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 13:19:20,148 [INFO] Pitch Result bei step size 125 für J03WOH in 22.9460 Sekunden
+2025-09-10 13:19:32,754 [INFO] Frames erstellen für home_25 mit 127 Frames bei step size 125 für J03WOH mit random in 11.6816 Sekunden
+2025-09-10 13:22:31,387 [INFO] Pitch Result berechnen für home_25 mit 127 Frames für J03WOH in 178.6326 Sekunden
+2025-09-10 13:22:31,388 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 13:31:39,766 [INFO] Pitch Result bei step size 125 für J03WOY in 26.3291 Sekunden
+2025-09-10 13:31:56,321 [INFO] Frames erstellen für home_25 mit 143 Frames bei step size 125 für J03WOY mit random in 15.3201 Sekunden
+2025-09-10 13:35:41,421 [INFO] Pitch Result berechnen für home_25 mit 143 Frames für J03WOY in 225.0995 Sekunden
+2025-09-10 13:35:41,423 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 13:40:38,738 [INFO] Pitch Result bei step size 125 für J03WPY in 24.9809 Sekunden
+2025-09-10 13:40:50,025 [INFO] Frames erstellen für home_25 mit 117 Frames bei step size 125 für J03WPY mit random in 10.8581 Sekunden
+2025-09-10 13:44:03,520 [INFO] Pitch Result berechnen für home_25 mit 117 Frames für J03WPY in 193.4950 Sekunden
+2025-09-10 13:44:03,522 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 13:53:59,722 [INFO] Pitch Result bei step size 125 für J03WR9 in 30.2795 Sekunden
+2025-09-10 13:54:14,879 [INFO] Frames erstellen für home_25 mit 134 Frames bei step size 125 für J03WR9 mit random in 14.5514 Sekunden
+2025-09-10 13:57:28,645 [INFO] Pitch Result berechnen für home_25 mit 134 Frames für J03WR9 in 193.7663 Sekunden
+2025-09-10 13:57:28,646 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 13:59:34,493 [INFO] Frames erstellen für home_25 mit 201 Frames bei step size 125 für J03WQQ mit all_positions in 73.0429 Sekunden
+2025-09-10 14:24:09,882 [INFO] Pitch Result berechnen für home_25 mit 201 Frames für J03WQQ in 1475.3871 Sekunden
+2025-09-10 14:24:09,886 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 14:29:38,381 [INFO] Frames erstellen für home_25 mit 201 Frames bei step size 125 für J03WQQ mit random in 50.5361 Sekunden
+2025-09-10 14:44:00,186 [INFO] Pitch Result berechnen für home_25 mit 201 Frames für J03WQQ in 861.8027 Sekunden
+2025-09-10 14:44:00,189 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 50}
+2025-09-10 15:42:36,622 [INFO] Frames erstellen für home_13 mit 31 Frames bei step size 125 für J03WQQ mit random in 2.9284 Sekunden
+2025-09-10 15:43:19,035 [INFO] Pitch Result berechnen für home_13 mit 31 Frames für J03WQQ in 42.4121 Sekunden
+2025-09-10 15:43:19,036 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 15:43:46,293 [INFO] Frames erstellen für home_28 mit 201 Frames bei step size 125 für J03WQQ mit random in 26.1987 Sekunden
+2025-09-10 15:48:34,906 [INFO] Pitch Result berechnen für home_28 mit 201 Frames für J03WQQ in 288.6103 Sekunden
+2025-09-10 15:48:34,907 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 15:57:06,661 [INFO] Frames erstellen für home_3 mit 2 Frames bei step size 125 für J03WQQ mit random in 0.1849 Sekunden
+2025-09-10 15:57:08,825 [INFO] Pitch Result berechnen für home_3 mit 2 Frames für J03WQQ in 2.1632 Sekunden
+2025-09-10 15:57:08,825 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 15:57:13,534 [INFO] Frames erstellen für home_11 mit 52 Frames bei step size 125 für J03WQQ mit random in 4.6043 Sekunden
+2025-09-10 15:58:13,630 [INFO] Pitch Result berechnen für home_11 mit 52 Frames für J03WQQ in 60.0961 Sekunden
+2025-09-10 15:58:13,631 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 15:58:34,450 [INFO] Frames erstellen für home_29 mit 201 Frames bei step size 125 für J03WQQ mit random in 19.3215 Sekunden
+2025-09-10 16:03:03,229 [INFO] Pitch Result berechnen für home_29 mit 201 Frames für J03WQQ in 268.7781 Sekunden
+2025-09-10 16:03:03,231 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:03:23,873 [INFO] Frames erstellen für home_9 mit 149 Frames bei step size 125 für J03WQQ mit random in 14.6814 Sekunden
+2025-09-10 16:05:42,562 [INFO] Pitch Result berechnen für home_9 mit 149 Frames für J03WQQ in 138.6890 Sekunden
+2025-09-10 16:05:42,564 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:06:06,039 [INFO] Frames erstellen für home_19 mit 199 Frames bei step size 125 für J03WQQ mit random in 18.8596 Sekunden
+2025-09-10 16:10:26,245 [INFO] Pitch Result berechnen für home_19 mit 199 Frames für J03WQQ in 260.2053 Sekunden
+2025-09-10 16:10:26,249 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:10:50,701 [INFO] Frames erstellen für home_33 mit 201 Frames bei step size 125 für J03WQQ mit random in 18.5182 Sekunden
+2025-09-10 16:15:21,661 [INFO] Pitch Result berechnen für home_33 mit 201 Frames für J03WQQ in 270.9590 Sekunden
+2025-09-10 16:15:21,663 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:15:43,191 [INFO] Frames erstellen für home_23 mit 170 Frames bei step size 125 für J03WQQ mit random in 15.3117 Sekunden
+2025-09-10 16:19:27,877 [INFO] Pitch Result berechnen für home_23 mit 170 Frames für J03WQQ in 224.6849 Sekunden
+2025-09-10 16:19:27,878 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:19:54,913 [INFO] Frames erstellen für home_15 mit 201 Frames bei step size 125 für J03WQQ mit random in 21.3251 Sekunden
+2025-09-10 16:25:27,812 [INFO] Pitch Result berechnen für home_15 mit 201 Frames für J03WQQ in 332.8973 Sekunden
+2025-09-10 16:25:27,813 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:25:47,374 [INFO] Frames erstellen für home_7 mit 149 Frames bei step size 125 für J03WQQ mit random in 13.4759 Sekunden
+2025-09-10 16:28:07,662 [INFO] Pitch Result berechnen für home_7 mit 149 Frames für J03WQQ in 140.2879 Sekunden
+2025-09-10 16:28:07,665 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:28:30,498 [INFO] Frames erstellen für home_5 mit 201 Frames bei step size 125 für J03WQQ mit random in 18.3543 Sekunden
+2025-09-10 16:33:01,308 [INFO] Pitch Result berechnen für home_5 mit 201 Frames für J03WQQ in 270.8091 Sekunden
+2025-09-10 16:33:01,311 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:33:25,160 [INFO] Frames erstellen für home_8 mit 201 Frames bei step size 125 für J03WQQ mit random in 17.8165 Sekunden
+2025-09-10 16:37:57,753 [INFO] Pitch Result berechnen für home_8 mit 201 Frames für J03WQQ in 272.5926 Sekunden
+2025-09-10 16:37:57,756 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:38:08,496 [INFO] Frames erstellen für home_14 mit 52 Frames bei step size 125 für J03WQQ mit random in 4.5642 Sekunden
+2025-09-10 16:39:07,429 [INFO] Pitch Result berechnen für home_14 mit 52 Frames für J03WQQ in 58.9334 Sekunden
+2025-09-10 16:39:07,433 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:39:10,839 [INFO] Frames erstellen für away_19 mit 21 Frames bei step size 125 für J03WQQ mit random in 1.8678 Sekunden
+2025-09-10 16:39:31,178 [INFO] Pitch Result berechnen für away_19 mit 21 Frames für J03WQQ in 20.3392 Sekunden
+2025-09-10 16:39:31,179 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:39:45,426 [INFO] Frames erstellen für away_23 mit 150 Frames bei step size 125 für J03WQQ mit random in 13.6437 Sekunden
+2025-09-10 16:43:14,055 [INFO] Pitch Result berechnen für away_23 mit 150 Frames für J03WQQ in 208.6290 Sekunden
+2025-09-10 16:43:14,056 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:43:33,462 [INFO] Frames erstellen für away_7 mit 150 Frames bei step size 125 für J03WQQ mit random in 14.6762 Sekunden
+2025-09-10 16:46:49,123 [INFO] Pitch Result berechnen für away_7 mit 150 Frames für J03WQQ in 195.6597 Sekunden
+2025-09-10 16:46:49,124 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:47:05,141 [INFO] Frames erstellen für away_2 mit 129 Frames bei step size 125 für J03WQQ mit random in 11.5300 Sekunden
+2025-09-10 16:49:13,492 [INFO] Pitch Result berechnen für away_2 mit 129 Frames für J03WQQ in 128.3507 Sekunden
+2025-09-10 16:49:13,493 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:49:29,942 [INFO] Frames erstellen für away_10 mit 140 Frames bei step size 125 für J03WQQ mit random in 12.6769 Sekunden
+2025-09-10 16:52:14,482 [INFO] Pitch Result berechnen für away_10 mit 140 Frames für J03WQQ in 164.5398 Sekunden
+2025-09-10 16:52:14,482 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:52:19,475 [INFO] Frames erstellen für away_11 mit 10 Frames bei step size 125 für J03WQQ mit random in 0.8642 Sekunden
+2025-09-10 16:52:28,336 [INFO] Pitch Result berechnen für away_11 mit 10 Frames für J03WQQ in 8.8613 Sekunden
+2025-09-10 16:52:28,336 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:52:39,926 [INFO] Frames erstellen für away_13 mit 129 Frames bei step size 125 für J03WQQ mit random in 11.2775 Sekunden
+2025-09-10 16:54:46,240 [INFO] Pitch Result berechnen für away_13 mit 129 Frames für J03WQQ in 126.3133 Sekunden
+2025-09-10 16:54:46,241 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:54:51,830 [INFO] Frames erstellen für away_27 mit 21 Frames bei step size 125 für J03WQQ mit random in 1.8203 Sekunden
+2025-09-10 16:55:12,585 [INFO] Pitch Result berechnen für away_27 mit 21 Frames für J03WQQ in 20.7547 Sekunden
+2025-09-10 16:55:12,586 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:55:26,444 [INFO] Frames erstellen für away_22 mit 150 Frames bei step size 125 für J03WQQ mit random in 13.2475 Sekunden
+2025-09-10 16:58:39,894 [INFO] Pitch Result berechnen für away_22 mit 150 Frames für J03WQQ in 193.4504 Sekunden
+2025-09-10 16:58:39,897 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 16:58:56,806 [INFO] Frames erstellen für away_14 mit 140 Frames bei step size 125 für J03WQQ mit random in 12.4613 Sekunden
+2025-09-10 17:01:38,015 [INFO] Pitch Result berechnen für away_14 mit 140 Frames für J03WQQ in 161.2086 Sekunden
+2025-09-10 17:01:38,016 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 17:01:55,667 [INFO] Frames erstellen für away_8 mit 150 Frames bei step size 125 für J03WQQ mit random in 13.5068 Sekunden
+2025-09-10 17:05:11,478 [INFO] Pitch Result berechnen für away_8 mit 150 Frames für J03WQQ in 195.8113 Sekunden
+2025-09-10 17:05:11,482 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 17:05:27,313 [INFO] Frames erstellen für away_20 mit 129 Frames bei step size 125 für J03WQQ mit random in 11.3925 Sekunden
+2025-09-10 17:07:33,825 [INFO] Pitch Result berechnen für away_20 mit 129 Frames für J03WQQ in 126.5112 Sekunden
+2025-09-10 17:07:33,828 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 17:07:38,544 [INFO] Frames erstellen für away_34 mit 10 Frames bei step size 125 für J03WQQ mit random in 0.8663 Sekunden
+2025-09-10 17:07:47,385 [INFO] Pitch Result berechnen für away_34 mit 10 Frames für J03WQQ in 8.8410 Sekunden
+2025-09-10 17:07:47,386 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 17:08:01,391 [INFO] Frames erstellen für away_25 mit 150 Frames bei step size 125 für J03WQQ mit random in 13.6827 Sekunden
+2025-09-10 17:11:19,421 [INFO] Pitch Result berechnen für away_25 mit 150 Frames für J03WQQ in 198.0304 Sekunden
+2025-09-10 17:11:19,423 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 17:11:25,759 [INFO] Frames erstellen für away_24 mit 21 Frames bei step size 125 für J03WQQ mit random in 1.8416 Sekunden
+2025-09-10 17:11:46,907 [INFO] Pitch Result berechnen für away_24 mit 21 Frames für J03WQQ in 21.1479 Sekunden
+2025-09-10 17:11:46,908 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 17:11:57,565 [INFO] Frames erstellen für away_5 mit 113 Frames bei step size 125 für J03WQQ mit random in 9.9948 Sekunden
+2025-09-10 17:13:38,948 [INFO] Pitch Result berechnen für away_5 mit 113 Frames für J03WQQ in 101.3829 Sekunden
+2025-09-10 17:13:38,948 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:23:25,060 [INFO] Frames erstellen für home_28 mit 5 Frames bei step size 125 für J03WOH mit random in 0.4378 Sekunden
+2025-09-10 19:23:30,915 [INFO] Pitch Result berechnen für home_28 mit 5 Frames für J03WOH in 5.8529 Sekunden
+2025-09-10 19:23:30,915 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:23:42,262 [INFO] Frames erstellen für home_10 mit 122 Frames bei step size 125 für J03WOH mit random in 11.1482 Sekunden
+2025-09-10 19:25:59,354 [INFO] Pitch Result berechnen für home_10 mit 122 Frames für J03WOH in 137.0913 Sekunden
+2025-09-10 19:25:59,354 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:26:13,188 [INFO] Frames erstellen für home_3 mit 101 Frames bei step size 125 für J03WOH mit random in 9.3298 Sekunden
+2025-09-10 19:27:46,868 [INFO] Pitch Result berechnen für home_3 mit 101 Frames für J03WOH in 93.6803 Sekunden
+2025-09-10 19:27:46,869 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:28:01,622 [INFO] Frames erstellen für home_11 mit 122 Frames bei step size 125 für J03WOH mit random in 11.6262 Sekunden
+2025-09-10 19:30:19,162 [INFO] Pitch Result berechnen für home_11 mit 122 Frames für J03WOH in 137.5394 Sekunden
+2025-09-10 19:30:19,164 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:30:33,945 [INFO] Frames erstellen für home_29 mit 127 Frames bei step size 125 für J03WOH mit random in 11.1594 Sekunden
+2025-09-10 19:33:32,375 [INFO] Pitch Result berechnen für home_29 mit 127 Frames für J03WOH in 178.4306 Sekunden
+2025-09-10 19:33:32,379 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:33:47,895 [INFO] Frames erstellen für home_31 mit 127 Frames bei step size 125 für J03WOH mit random in 11.5694 Sekunden
+2025-09-10 19:36:46,624 [INFO] Pitch Result berechnen für home_31 mit 127 Frames für J03WOH in 178.7288 Sekunden
+2025-09-10 19:36:46,627 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:37:02,712 [INFO] Frames erstellen für home_30 mit 127 Frames bei step size 125 für J03WOH mit random in 12.0226 Sekunden
+2025-09-10 19:40:05,561 [INFO] Pitch Result berechnen für home_30 mit 127 Frames für J03WOH in 182.8498 Sekunden
+2025-09-10 19:40:05,565 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:40:20,559 [INFO] Frames erstellen für home_9 mit 122 Frames bei step size 125 für J03WOH mit random in 11.1515 Sekunden
+2025-09-10 19:42:43,068 [INFO] Pitch Result berechnen für home_9 mit 122 Frames für J03WOH in 142.5088 Sekunden
+2025-09-10 19:42:43,070 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:42:47,382 [INFO] Frames erstellen für home_19 mit 5 Frames bei step size 125 für J03WOH mit random in 0.4976 Sekunden
+2025-09-10 19:42:51,946 [INFO] Pitch Result berechnen für home_19 mit 5 Frames für J03WOH in 4.5642 Sekunden
+2025-09-10 19:42:51,946 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:43:04,267 [INFO] Frames erstellen für home_33 mit 127 Frames bei step size 125 für J03WOH mit random in 12.1218 Sekunden
+2025-09-10 19:46:02,571 [INFO] Pitch Result berechnen für home_33 mit 127 Frames für J03WOH in 178.3040 Sekunden
+2025-09-10 19:46:02,572 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:46:18,832 [INFO] Frames erstellen für home_34 mit 127 Frames bei step size 125 für J03WOH mit random in 12.2204 Sekunden
+2025-09-10 19:49:18,541 [INFO] Pitch Result berechnen für home_34 mit 127 Frames für J03WOH in 179.7092 Sekunden
+2025-09-10 19:49:18,542 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:49:24,960 [INFO] Frames erstellen für home_23 mit 26 Frames bei step size 125 für J03WOH mit random in 2.4390 Sekunden
+2025-09-10 19:49:54,460 [INFO] Pitch Result berechnen für home_23 mit 26 Frames für J03WOH in 29.4999 Sekunden
+2025-09-10 19:49:54,462 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:50:04,177 [INFO] Frames erstellen für home_7 mit 101 Frames bei step size 125 für J03WOH mit random in 8.9095 Sekunden
+2025-09-10 19:51:34,709 [INFO] Pitch Result berechnen für home_7 mit 101 Frames für J03WOH in 90.5319 Sekunden
+2025-09-10 19:51:34,710 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:51:39,921 [INFO] Frames erstellen für home_5 mit 26 Frames bei step size 125 für J03WOH mit random in 2.2363 Sekunden
+2025-09-10 19:52:10,081 [INFO] Pitch Result berechnen für home_5 mit 26 Frames für J03WOH in 30.1598 Sekunden
+2025-09-10 19:52:10,081 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:52:11,289 [INFO] Frames erstellen für home_14 mit 5 Frames bei step size 125 für J03WOH mit random in 0.4243 Sekunden
+2025-09-10 19:52:15,587 [INFO] Pitch Result berechnen für home_14 mit 5 Frames für J03WOH in 4.2970 Sekunden
+2025-09-10 19:52:15,587 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:52:26,017 [INFO] Frames erstellen für away_20 mit 116 Frames bei step size 125 für J03WOH mit random in 10.2614 Sekunden
+2025-09-10 19:54:09,807 [INFO] Pitch Result berechnen für away_20 mit 116 Frames für J03WOH in 103.7896 Sekunden
+2025-09-10 19:54:09,808 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:54:26,989 [INFO] Frames erstellen für away_5 mit 157 Frames bei step size 125 für J03WOH mit random in 13.7911 Sekunden
+2025-09-10 19:58:34,692 [INFO] Pitch Result berechnen für away_5 mit 157 Frames für J03WOH in 247.7032 Sekunden
+2025-09-10 19:58:34,693 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 19:58:56,722 [INFO] Frames erstellen für away_29 mit 150 Frames bei step size 125 für J03WOH mit random in 16.5689 Sekunden
+2025-09-10 20:02:45,768 [INFO] Pitch Result berechnen für away_29 mit 150 Frames für J03WOH in 229.0452 Sekunden
+2025-09-10 20:02:45,771 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:03:04,568 [INFO] Frames erstellen für away_23 mit 157 Frames bei step size 125 für J03WOH mit random in 14.2089 Sekunden
+2025-09-10 20:06:29,816 [INFO] Pitch Result berechnen für away_23 mit 157 Frames für J03WOH in 205.2481 Sekunden
+2025-09-10 20:06:29,818 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:06:36,141 [INFO] Frames erstellen für away_9 mit 17 Frames bei step size 125 für J03WOH mit random in 1.4820 Sekunden
+2025-09-10 20:06:53,873 [INFO] Pitch Result berechnen für away_9 mit 17 Frames für J03WOH in 17.7322 Sekunden
+2025-09-10 20:06:53,874 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:07:06,490 [INFO] Frames erstellen für away_7 mit 140 Frames bei step size 125 für J03WOH mit random in 12.0753 Sekunden
+2025-09-10 20:09:27,399 [INFO] Pitch Result berechnen für away_7 mit 140 Frames für J03WOH in 140.9096 Sekunden
+2025-09-10 20:09:27,401 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:09:45,142 [INFO] Frames erstellen für away_1 mit 157 Frames bei step size 125 für J03WOH mit random in 13.6559 Sekunden
+2025-09-10 20:13:09,759 [INFO] Pitch Result berechnen für away_1 mit 157 Frames für J03WOH in 204.6175 Sekunden
+2025-09-10 20:13:09,763 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:13:28,403 [INFO] Frames erstellen für away_8 mit 157 Frames bei step size 125 für J03WOH mit random in 13.7634 Sekunden
+2025-09-10 20:16:55,727 [INFO] Pitch Result berechnen für away_8 mit 157 Frames für J03WOH in 207.3238 Sekunden
+2025-09-10 20:16:55,730 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:17:01,114 [INFO] Frames erstellen für away_30 mit 7 Frames bei step size 125 für J03WOH mit random in 0.6016 Sekunden
+2025-09-10 20:17:07,166 [INFO] Pitch Result berechnen für away_30 mit 7 Frames für J03WOH in 6.0521 Sekunden
+2025-09-10 20:17:07,166 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:17:08,898 [INFO] Frames erstellen für away_26 mit 17 Frames bei step size 125 für J03WOH mit random in 1.4761 Sekunden
+2025-09-10 20:17:26,593 [INFO] Pitch Result berechnen für away_26 mit 17 Frames für J03WOH in 17.6949 Sekunden
+2025-09-10 20:17:26,593 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:17:39,346 [INFO] Frames erstellen für away_18 mit 140 Frames bei step size 125 für J03WOH mit random in 12.1695 Sekunden
+2025-09-10 20:20:02,598 [INFO] Pitch Result berechnen für away_18 mit 140 Frames für J03WOH in 143.2521 Sekunden
+2025-09-10 20:20:02,602 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:20:20,625 [INFO] Frames erstellen für away_11 mit 157 Frames bei step size 125 für J03WOH mit random in 13.7209 Sekunden
+2025-09-10 20:23:46,848 [INFO] Pitch Result berechnen für away_11 mit 157 Frames für J03WOH in 206.2233 Sekunden
+2025-09-10 20:23:46,851 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:24:04,841 [INFO] Frames erstellen für away_19 mit 150 Frames bei step size 125 für J03WOH mit random in 13.2823 Sekunden
+2025-09-10 20:27:06,810 [INFO] Pitch Result berechnen für away_19 mit 150 Frames für J03WOH in 181.9690 Sekunden
+2025-09-10 20:27:06,814 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:27:12,023 [INFO] Frames erstellen für away_10 mit 7 Frames bei step size 125 für J03WOH mit random in 0.5964 Sekunden
+2025-09-10 20:27:18,083 [INFO] Pitch Result berechnen für away_10 mit 7 Frames für J03WOH in 6.0603 Sekunden
+2025-09-10 20:27:18,083 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:27:32,022 [INFO] Frames erstellen für away_33 mit 157 Frames bei step size 125 für J03WOH mit random in 13.6757 Sekunden
+2025-09-10 20:31:13,362 [INFO] Pitch Result berechnen für away_33 mit 157 Frames für J03WOH in 221.3398 Sekunden
+2025-09-10 20:31:13,365 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 20:31:22,151 [INFO] Frames erstellen für away_24 mit 41 Frames bei step size 125 für J03WOH mit random in 3.7086 Sekunden
+2025-09-10 20:32:09,838 [INFO] Pitch Result berechnen für away_24 mit 41 Frames für J03WOH in 47.6861 Sekunden
+2025-09-10 20:32:09,838 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:15:57,192 [INFO] Frames erstellen für home_11 mit 133 Frames bei step size 125 für J03WOY mit random in 12.1679 Sekunden
+2025-09-10 21:18:49,975 [INFO] Pitch Result berechnen für home_11 mit 133 Frames für J03WOY in 172.7813 Sekunden
+2025-09-10 21:18:49,976 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:18:57,371 [INFO] Frames erstellen für home_29 mit 35 Frames bei step size 125 für J03WOY mit random in 3.1818 Sekunden
+2025-09-10 21:19:37,082 [INFO] Pitch Result berechnen für home_29 mit 35 Frames für J03WOY in 39.7105 Sekunden
+2025-09-10 21:19:37,083 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:19:51,117 [INFO] Frames erstellen für home_31 mit 143 Frames bei step size 125 für J03WOY mit random in 12.8964 Sekunden
+2025-09-10 21:23:10,183 [INFO] Pitch Result berechnen für home_31 mit 143 Frames für J03WOY in 199.0665 Sekunden
+2025-09-10 21:23:10,187 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:23:23,971 [INFO] Frames erstellen für home_9 mit 108 Frames bei step size 125 für J03WOY mit random in 9.4176 Sekunden
+2025-09-10 21:25:09,539 [INFO] Pitch Result berechnen für home_9 mit 108 Frames für J03WOY in 105.5678 Sekunden
+2025-09-10 21:25:09,542 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:25:15,992 [INFO] Frames erstellen für home_19 mit 35 Frames bei step size 125 für J03WOY mit random in 3.0490 Sekunden
+2025-09-10 21:25:55,599 [INFO] Pitch Result berechnen für home_19 mit 35 Frames für J03WOY in 39.6065 Sekunden
+2025-09-10 21:25:55,600 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:26:10,109 [INFO] Frames erstellen für home_33 mit 143 Frames bei step size 125 für J03WOY mit random in 13.4070 Sekunden
+2025-09-10 21:29:21,580 [INFO] Pitch Result berechnen für home_33 mit 143 Frames für J03WOY in 191.4706 Sekunden
+2025-09-10 21:29:21,582 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:29:35,346 [INFO] Frames erstellen für home_23 mit 108 Frames bei step size 125 für J03WOY mit random in 9.4298 Sekunden
+2025-09-10 21:31:28,980 [INFO] Pitch Result berechnen für home_23 mit 108 Frames für J03WOY in 113.6329 Sekunden
+2025-09-10 21:31:28,982 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:31:46,915 [INFO] Frames erstellen für home_15 mit 143 Frames bei step size 125 für J03WOY mit random in 14.3778 Sekunden
+2025-09-10 21:35:18,157 [INFO] Pitch Result berechnen für home_15 mit 143 Frames für J03WOY in 211.2418 Sekunden
+2025-09-10 21:35:18,159 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:35:34,055 [INFO] Frames erstellen für home_7 mit 127 Frames bei step size 125 für J03WOY mit random in 11.3799 Sekunden
+2025-09-10 21:38:19,685 [INFO] Pitch Result berechnen für home_7 mit 127 Frames für J03WOY in 165.6299 Sekunden
+2025-09-10 21:38:19,688 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:38:37,868 [INFO] Frames erstellen für home_5 mit 143 Frames bei step size 125 für J03WOY mit random in 14.0509 Sekunden
+2025-09-10 21:42:15,102 [INFO] Pitch Result berechnen für home_5 mit 143 Frames für J03WOY in 217.2334 Sekunden
+2025-09-10 21:42:15,104 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:42:33,442 [INFO] Frames erstellen für home_4 mit 133 Frames bei step size 125 für J03WOY mit random in 12.4173 Sekunden
+2025-09-10 21:45:42,191 [INFO] Pitch Result berechnen für home_4 mit 133 Frames für J03WOY in 188.7481 Sekunden
+2025-09-10 21:45:42,191 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:45:47,546 [INFO] Frames erstellen für home_35 mit 10 Frames bei step size 125 für J03WOY mit random in 0.9881 Sekunden
+2025-09-10 21:45:56,764 [INFO] Pitch Result berechnen für home_35 mit 10 Frames für J03WOY in 9.2186 Sekunden
+2025-09-10 21:45:56,765 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:46:11,321 [INFO] Frames erstellen für home_8 mit 143 Frames bei step size 125 für J03WOY mit random in 14.1939 Sekunden
+2025-09-10 21:49:42,768 [INFO] Pitch Result berechnen für home_8 mit 143 Frames für J03WOY in 211.4472 Sekunden
+2025-09-10 21:49:42,768 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:49:48,333 [INFO] Frames erstellen für home_14 mit 10 Frames bei step size 125 für J03WOY mit random in 0.9931 Sekunden
+2025-09-10 21:49:57,520 [INFO] Pitch Result berechnen für home_14 mit 10 Frames für J03WOY in 9.1867 Sekunden
+2025-09-10 21:49:57,521 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:49:59,389 [INFO] Frames erstellen für home_46 mit 16 Frames bei step size 125 für J03WOY mit random in 1.5108 Sekunden
+2025-09-10 21:50:14,893 [INFO] Pitch Result berechnen für home_46 mit 16 Frames für J03WOY in 15.5047 Sekunden
+2025-09-10 21:50:14,894 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:50:16,756 [INFO] Frames erstellen für away_9 mit 15 Frames bei step size 125 für J03WOY mit random in 1.3526 Sekunden
+2025-09-10 21:50:31,925 [INFO] Pitch Result berechnen für away_9 mit 15 Frames für J03WOY in 15.1690 Sekunden
+2025-09-10 21:50:31,926 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:50:47,366 [INFO] Frames erstellen für away_1 mit 151 Frames bei step size 125 für J03WOY mit random in 14.9250 Sekunden
+2025-09-10 21:54:35,913 [INFO] Pitch Result berechnen für away_1 mit 151 Frames für J03WOY in 228.5465 Sekunden
+2025-09-10 21:54:35,914 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:54:47,402 [INFO] Frames erstellen für away_39 mit 72 Frames bei step size 125 für J03WOY mit random in 6.7667 Sekunden
+2025-09-10 21:56:20,448 [INFO] Pitch Result berechnen für away_39 mit 72 Frames für J03WOY in 93.0460 Sekunden
+2025-09-10 21:56:20,449 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:56:35,471 [INFO] Frames erstellen für away_18 mit 136 Frames bei step size 125 für J03WOY mit random in 12.7194 Sekunden
+2025-09-10 21:59:08,617 [INFO] Pitch Result berechnen für away_18 mit 136 Frames für J03WOY in 153.1454 Sekunden
+2025-09-10 21:59:08,620 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 21:59:27,419 [INFO] Frames erstellen für away_7 mit 151 Frames bei step size 125 für J03WOY mit random in 14.4966 Sekunden
+2025-09-10 22:03:13,736 [INFO] Pitch Result berechnen für away_7 mit 151 Frames für J03WOY in 226.3160 Sekunden
+2025-09-10 22:03:13,739 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:03:20,098 [INFO] Frames erstellen für away_25 mit 15 Frames bei step size 125 für J03WOY mit random in 1.4598 Sekunden
+2025-09-10 22:03:35,104 [INFO] Pitch Result berechnen für away_25 mit 15 Frames für J03WOY in 15.0056 Sekunden
+2025-09-10 22:03:35,104 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:03:48,310 [INFO] Frames erstellen für away_19 mit 136 Frames bei step size 125 für J03WOY mit random in 12.6862 Sekunden
+2025-09-10 22:06:21,867 [INFO] Pitch Result berechnen für away_19 mit 136 Frames für J03WOY in 153.5574 Sekunden
+2025-09-10 22:06:21,871 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:06:39,914 [INFO] Frames erstellen für away_34 mit 151 Frames bei step size 125 für J03WOY mit random in 13.8482 Sekunden
+2025-09-10 22:10:29,593 [INFO] Pitch Result berechnen für away_34 mit 151 Frames für J03WOY in 229.6771 Sekunden
+2025-09-10 22:10:29,594 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:10:48,131 [INFO] Frames erstellen für away_21 mit 151 Frames bei step size 125 für J03WOY mit random in 13.7209 Sekunden
+2025-09-10 22:14:34,881 [INFO] Pitch Result berechnen für away_21 mit 151 Frames für J03WOY in 226.7493 Sekunden
+2025-09-10 22:14:34,882 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:14:53,820 [INFO] Frames erstellen für away_6 mit 151 Frames bei step size 125 für J03WOY mit random in 14.0630 Sekunden
+2025-09-10 22:18:41,751 [INFO] Pitch Result berechnen für away_6 mit 151 Frames für J03WOY in 227.9304 Sekunden
+2025-09-10 22:18:41,753 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:19:02,145 [INFO] Frames erstellen für away_5 mit 151 Frames bei step size 125 für J03WOY mit random in 15.4809 Sekunden
+2025-09-10 22:22:48,329 [INFO] Pitch Result berechnen für away_5 mit 151 Frames für J03WOY in 226.1843 Sekunden
+2025-09-10 22:22:48,331 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:23:05,534 [INFO] Frames erstellen für away_27 mit 136 Frames bei step size 125 für J03WOY mit random in 12.2756 Sekunden
+2025-09-10 22:26:05,474 [INFO] Pitch Result berechnen für away_27 mit 136 Frames für J03WOY in 179.9396 Sekunden
+2025-09-10 22:26:05,475 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:26:18,930 [INFO] Frames erstellen für away_14 mit 79 Frames bei step size 125 für J03WOY mit random in 8.7246 Sekunden
+2025-09-10 22:27:57,012 [INFO] Pitch Result berechnen für away_14 mit 79 Frames für J03WOY in 98.0816 Sekunden
+2025-09-10 22:27:57,013 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:28:08,136 [INFO] Frames erstellen für away_17 mit 79 Frames bei step size 125 für J03WOY mit random in 8.4283 Sekunden
+2025-09-10 22:30:20,790 [INFO] Pitch Result berechnen für away_17 mit 79 Frames für J03WOY in 132.6532 Sekunden
+2025-09-10 22:30:20,794 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:30:29,809 [INFO] Frames erstellen für away_29 mit 72 Frames bei step size 125 für J03WOY mit random in 6.4247 Sekunden
+2025-09-10 22:31:33,337 [INFO] Pitch Result berechnen für away_29 mit 72 Frames für J03WOY in 63.5275 Sekunden
+2025-09-10 22:31:33,338 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-10 22:31:36,876 [INFO] Frames erstellen für away_15 mit 15 Frames bei step size 125 für J03WOY mit random in 1.2748 Sekunden
+2025-09-10 22:31:51,660 [INFO] Pitch Result berechnen für away_15 mit 15 Frames für J03WOY in 14.7837 Sekunden
+2025-09-10 22:31:51,660 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:38:25,572 [INFO] Frames erstellen für home_28 mit 33 Frames bei step size 125 für J03WPY mit random in 3.4112 Sekunden
+2025-09-12 08:39:08,921 [INFO] Pitch Result berechnen für home_28 mit 33 Frames für J03WPY in 43.3483 Sekunden
+2025-09-12 08:39:08,921 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:39:20,146 [INFO] Frames erstellen für home_11 mit 94 Frames bei step size 125 für J03WPY mit random in 9.4504 Sekunden
+2025-09-12 08:41:18,862 [INFO] Pitch Result berechnen für home_11 mit 94 Frames für J03WPY in 118.7160 Sekunden
+2025-09-12 08:41:18,863 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:41:33,130 [INFO] Frames erstellen für home_31 mit 117 Frames bei step size 125 für J03WPY mit random in 11.2841 Sekunden
+2025-09-12 08:44:55,941 [INFO] Pitch Result berechnen für home_31 mit 117 Frames für J03WPY in 202.8117 Sekunden
+2025-09-12 08:44:55,942 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:45:12,405 [INFO] Frames erstellen für home_9 mit 117 Frames bei step size 125 für J03WPY mit random in 12.4865 Sekunden
+2025-09-12 08:48:50,854 [INFO] Pitch Result berechnen für home_9 mit 117 Frames für J03WPY in 218.4477 Sekunden
+2025-09-12 08:48:50,855 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:49:02,299 [INFO] Frames erstellen für home_19 mit 84 Frames bei step size 125 für J03WPY mit random in 7.7067 Sekunden
+2025-09-12 08:50:18,447 [INFO] Pitch Result berechnen für home_19 mit 84 Frames für J03WPY in 76.1476 Sekunden
+2025-09-12 08:50:18,449 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:50:32,271 [INFO] Frames erstellen für home_33 mit 117 Frames bei step size 125 für J03WPY mit random in 11.1876 Sekunden
+2025-09-12 08:53:16,883 [INFO] Pitch Result berechnen für home_33 mit 117 Frames für J03WPY in 164.6120 Sekunden
+2025-09-12 08:53:16,884 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:53:23,564 [INFO] Frames erstellen für home_34 mit 33 Frames bei step size 125 für J03WPY mit random in 3.0010 Sekunden
+2025-09-12 08:53:59,235 [INFO] Pitch Result berechnen für home_34 mit 33 Frames für J03WPY in 35.6706 Sekunden
+2025-09-12 08:53:59,236 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:54:08,048 [INFO] Frames erstellen für home_23 mit 84 Frames bei step size 125 für J03WPY mit random in 7.6629 Sekunden
+2025-09-12 08:55:22,181 [INFO] Pitch Result berechnen für home_23 mit 84 Frames für J03WPY in 74.1328 Sekunden
+2025-09-12 08:55:22,182 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:55:35,644 [INFO] Frames erstellen für home_15 mit 117 Frames bei step size 125 für J03WPY mit random in 10.9444 Sekunden
+2025-09-12 08:58:10,266 [INFO] Pitch Result berechnen für home_15 mit 117 Frames für J03WPY in 154.6217 Sekunden
+2025-09-12 08:58:10,267 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:58:16,277 [INFO] Frames erstellen für home_7 mit 23 Frames bei step size 125 für J03WPY mit random in 2.3688 Sekunden
+2025-09-12 08:58:41,053 [INFO] Pitch Result berechnen für home_7 mit 23 Frames für J03WPY in 24.7762 Sekunden
+2025-09-12 08:58:41,054 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 08:58:53,304 [INFO] Frames erstellen für home_5 mit 117 Frames bei step size 125 für J03WPY mit random in 11.4745 Sekunden
+2025-09-12 09:01:34,684 [INFO] Pitch Result berechnen für home_5 mit 117 Frames für J03WPY in 161.3798 Sekunden
+2025-09-12 09:01:34,686 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:01:46,368 [INFO] Frames erstellen für home_4 mit 84 Frames bei step size 125 für J03WPY mit random in 7.8407 Sekunden
+2025-09-12 09:03:04,400 [INFO] Pitch Result berechnen für home_4 mit 84 Frames für J03WPY in 78.0317 Sekunden
+2025-09-12 09:03:04,403 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:03:17,645 [INFO] Frames erstellen für home_8 mit 117 Frames bei step size 125 für J03WPY mit random in 10.6874 Sekunden
+2025-09-12 09:06:04,798 [INFO] Pitch Result berechnen für home_8 mit 117 Frames für J03WPY in 167.1526 Sekunden
+2025-09-12 09:06:04,798 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:06:11,685 [INFO] Frames erstellen für home_46 mit 33 Frames bei step size 125 für J03WPY mit random in 3.0451 Sekunden
+2025-09-12 09:06:45,842 [INFO] Pitch Result berechnen für home_46 mit 33 Frames für J03WPY in 34.1569 Sekunden
+2025-09-12 09:06:45,843 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:06:49,773 [INFO] Frames erstellen für away_22 mit 32 Frames bei step size 125 für J03WPY mit random in 2.8794 Sekunden
+2025-09-12 09:07:17,576 [INFO] Pitch Result berechnen für away_22 mit 32 Frames für J03WPY in 27.8024 Sekunden
+2025-09-12 09:07:17,576 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:07:38,327 [INFO] Frames erstellen für away_16 mit 211 Frames bei step size 125 für J03WPY mit random in 19.7575 Sekunden
+2025-09-12 09:12:50,770 [INFO] Pitch Result berechnen für away_16 mit 211 Frames für J03WPY in 312.4431 Sekunden
+2025-09-12 09:12:50,771 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:13:14,090 [INFO] Frames erstellen für away_5 mit 179 Frames bei step size 125 für J03WPY mit random in 16.7601 Sekunden
+2025-09-12 09:17:09,445 [INFO] Pitch Result berechnen für away_5 mit 179 Frames für J03WPY in 235.3549 Sekunden
+2025-09-12 09:17:09,446 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:17:34,253 [INFO] Frames erstellen für away_26 mit 211 Frames bei step size 125 für J03WPY mit random in 19.4168 Sekunden
+2025-09-12 09:22:15,247 [INFO] Pitch Result berechnen für away_26 mit 211 Frames für J03WPY in 280.9935 Sekunden
+2025-09-12 09:22:15,250 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:22:38,176 [INFO] Frames erstellen für away_28 mit 179 Frames bei step size 125 für J03WPY mit random in 16.4506 Sekunden
+2025-09-12 09:26:15,539 [INFO] Pitch Result berechnen für away_28 mit 179 Frames für J03WPY in 217.3620 Sekunden
+2025-09-12 09:26:15,541 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:26:35,167 [INFO] Frames erstellen für away_10 mit 155 Frames bei step size 125 für J03WPY mit random in 14.2098 Sekunden
+2025-09-12 09:29:17,925 [INFO] Pitch Result berechnen für away_10 mit 155 Frames für J03WPY in 162.7573 Sekunden
+2025-09-12 09:29:17,926 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:29:27,612 [INFO] Frames erstellen für away_13 mit 56 Frames bei step size 125 für J03WPY mit random in 5.0072 Sekunden
+2025-09-12 09:30:25,483 [INFO] Pitch Result berechnen für away_13 mit 56 Frames für J03WPY in 57.8711 Sekunden
+2025-09-12 09:30:25,484 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:30:31,243 [INFO] Frames erstellen für away_18 mit 44 Frames bei step size 125 für J03WPY mit random in 4.0162 Sekunden
+2025-09-12 09:31:12,019 [INFO] Pitch Result berechnen für away_18 mit 44 Frames für J03WPY in 40.7751 Sekunden
+2025-09-12 09:31:12,019 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:31:27,737 [INFO] Frames erstellen für away_23 mit 155 Frames bei step size 125 für J03WPY mit random in 14.3535 Sekunden
+2025-09-12 09:34:08,318 [INFO] Pitch Result berechnen für away_23 mit 155 Frames für J03WPY in 160.5818 Sekunden
+2025-09-12 09:34:08,321 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:34:32,853 [INFO] Frames erstellen für away_33 mit 211 Frames bei step size 125 für J03WPY mit random in 19.6565 Sekunden
+2025-09-12 09:39:28,421 [INFO] Pitch Result berechnen für away_33 mit 211 Frames für J03WPY in 295.5675 Sekunden
+2025-09-12 09:39:28,422 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:39:56,944 [INFO] Frames erstellen für away_6 mit 211 Frames bei step size 125 für J03WPY mit random in 21.2495 Sekunden
+2025-09-12 09:45:02,123 [INFO] Pitch Result berechnen für away_6 mit 211 Frames für J03WPY in 305.1791 Sekunden
+2025-09-12 09:45:02,124 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:45:27,969 [INFO] Frames erstellen für away_4 mit 211 Frames bei step size 125 für J03WPY mit random in 19.1207 Sekunden
+2025-09-12 09:50:08,577 [INFO] Pitch Result berechnen für away_4 mit 211 Frames für J03WPY in 280.6061 Sekunden
+2025-09-12 09:50:08,577 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:50:30,219 [INFO] Frames erstellen für away_15 mit 167 Frames bei step size 125 für J03WPY mit random in 15.1657 Sekunden
+2025-09-12 09:53:40,752 [INFO] Pitch Result berechnen für away_15 mit 167 Frames für J03WPY in 190.5324 Sekunden
+2025-09-12 09:53:40,755 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:53:50,866 [INFO] Frames erstellen für away_36 mit 56 Frames bei step size 125 für J03WPY mit random in 4.9581 Sekunden
+2025-09-12 09:54:48,466 [INFO] Pitch Result berechnen für away_36 mit 56 Frames für J03WPY in 57.5998 Sekunden
+2025-09-12 09:54:48,468 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 09:55:09,206 [INFO] Frames erstellen für away_17 mit 211 Frames bei step size 125 für J03WPY mit random in 18.9647 Sekunden
+2025-09-12 10:00:25,187 [INFO] Pitch Result berechnen für away_17 mit 211 Frames für J03WPY in 315.9801 Sekunden
+2025-09-12 10:00:25,191 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 10:00:34,753 [INFO] Frames erstellen für away_3 mit 32 Frames bei step size 125 für J03WPY mit random in 3.0306 Sekunden
+2025-09-12 10:01:04,315 [INFO] Pitch Result berechnen für away_3 mit 32 Frames für J03WPY in 29.5618 Sekunden
+2025-09-12 10:01:04,316 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 14:49:27,927 [INFO] Frames erstellen für home_28 mit 128 Frames bei step size 125 für J03WR9 mit random in 12.7879 Sekunden
+2025-09-12 14:52:34,302 [INFO] Pitch Result berechnen für home_28 mit 128 Frames für J03WR9 in 186.3733 Sekunden
+2025-09-12 14:52:34,303 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 14:52:41,148 [INFO] Frames erstellen für home_11 mit 14 Frames bei step size 125 für J03WR9 mit random in 1.5244 Sekunden
+2025-09-12 14:52:56,814 [INFO] Pitch Result berechnen für home_11 mit 14 Frames für J03WR9 in 15.6659 Sekunden
+2025-09-12 14:52:56,815 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 14:53:10,200 [INFO] Frames erstellen für home_29 mit 134 Frames bei step size 125 für J03WR9 mit random in 12.9222 Sekunden
+2025-09-12 14:56:27,152 [INFO] Pitch Result berechnen für home_29 mit 134 Frames für J03WR9 in 196.9516 Sekunden
+2025-09-12 14:56:27,153 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 14:56:44,316 [INFO] Frames erstellen für home_31 mit 134 Frames bei step size 125 für J03WR9 mit random in 12.8788 Sekunden
+2025-09-12 14:59:41,554 [INFO] Pitch Result berechnen für home_31 mit 134 Frames für J03WR9 in 177.2381 Sekunden
+2025-09-12 14:59:41,555 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 14:59:59,948 [INFO] Frames erstellen für home_9 mit 134 Frames bei step size 125 für J03WR9 mit random in 13.9716 Sekunden
+2025-09-12 15:02:58,824 [INFO] Pitch Result berechnen für home_9 mit 134 Frames für J03WR9 in 178.8765 Sekunden
+2025-09-12 15:02:58,825 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 15:03:15,085 [INFO] Frames erstellen für home_19 mit 120 Frames bei step size 125 für J03WR9 mit random in 12.0686 Sekunden
+2025-09-12 15:05:25,283 [INFO] Pitch Result berechnen für home_19 mit 120 Frames für J03WR9 in 130.1979 Sekunden
+2025-09-12 15:05:25,284 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 15:05:43,162 [INFO] Frames erstellen für home_33 mit 134 Frames bei step size 125 für J03WR9 mit random in 14.0314 Sekunden
+2025-09-12 15:09:34,029 [INFO] Pitch Result berechnen für home_33 mit 134 Frames für J03WR9 in 230.8664 Sekunden
+2025-09-12 15:09:34,032 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 15:09:40,287 [INFO] Frames erstellen für home_23 mit 14 Frames bei step size 125 für J03WR9 mit random in 1.4738 Sekunden
+2025-09-12 15:09:54,826 [INFO] Pitch Result berechnen für home_23 mit 14 Frames für J03WR9 in 14.5390 Sekunden
+2025-09-12 15:09:54,827 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 15:40:39,163 [INFO] Frames erstellen für home_15 mit 134 Frames bei step size 125 für J03WR9 mit random in 14.4865 Sekunden
+2025-09-12 15:43:36,764 [INFO] Pitch Result berechnen für home_15 mit 134 Frames für J03WR9 in 177.5995 Sekunden
+2025-09-12 15:43:36,765 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 15:43:53,368 [INFO] Frames erstellen für home_7 mit 120 Frames bei step size 125 für J03WR9 mit random in 12.1223 Sekunden
+2025-09-12 15:45:58,927 [INFO] Pitch Result berechnen für home_7 mit 120 Frames für J03WR9 in 125.5590 Sekunden
+2025-09-12 15:45:58,928 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 15:46:15,080 [INFO] Frames erstellen für home_5 mit 134 Frames bei step size 125 für J03WR9 mit random in 12.4329 Sekunden
+2025-09-12 15:49:03,667 [INFO] Pitch Result berechnen für home_5 mit 134 Frames für J03WR9 in 168.5866 Sekunden
+2025-09-12 15:49:03,668 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 15:49:20,212 [INFO] Frames erstellen für home_8 mit 134 Frames bei step size 125 für J03WR9 mit random in 12.4186 Sekunden
+2025-09-12 15:52:06,855 [INFO] Pitch Result berechnen für home_8 mit 134 Frames für J03WR9 in 166.6424 Sekunden
+2025-09-12 15:52:06,856 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 15:52:11,782 [INFO] Frames erstellen für home_46 mit 6 Frames bei step size 125 für J03WR9 mit random in 0.5669 Sekunden
+2025-09-12 15:52:17,090 [INFO] Pitch Result berechnen für home_46 mit 6 Frames für J03WR9 in 5.3073 Sekunden
+2025-09-12 15:52:17,090 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 15:52:35,424 [INFO] Frames erstellen für away_28 mit 199 Frames bei step size 125 für J03WR9 mit random in 18.1113 Sekunden
+2025-09-12 16:01:54,659 [INFO] Pitch Result berechnen für away_28 mit 199 Frames für J03WR9 in 559.2343 Sekunden
+2025-09-12 16:01:54,661 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 16:02:27,669 [INFO] Frames erstellen für away_1 mit 237 Frames bei step size 125 für J03WR9 mit random in 26.4469 Sekunden
+2025-09-12 16:07:40,706 [INFO] Pitch Result berechnen für away_1 mit 237 Frames für J03WR9 in 313.0373 Sekunden
+2025-09-12 16:07:40,708 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 16:07:59,872 [INFO] Frames erstellen für away_5 mit 116 Frames bei step size 125 für J03WR9 mit random in 11.5832 Sekunden
+2025-09-12 16:10:18,986 [INFO] Pitch Result berechnen für away_5 mit 116 Frames für J03WR9 in 139.1137 Sekunden
+2025-09-12 16:10:18,989 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 16:10:26,694 [INFO] Frames erstellen für away_10 mit 38 Frames bei step size 125 für J03WR9 mit random in 3.8430 Sekunden
+2025-09-12 16:11:07,753 [INFO] Pitch Result berechnen für away_10 mit 38 Frames für J03WR9 in 41.0588 Sekunden
+2025-09-12 16:11:07,756 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 16:11:30,967 [INFO] Frames erstellen für away_13 mit 217 Frames bei step size 125 für J03WR9 mit random in 21.8385 Sekunden
+2025-09-12 16:15:44,084 [INFO] Pitch Result berechnen für away_13 mit 217 Frames für J03WR9 in 253.1172 Sekunden
+2025-09-12 16:15:44,087 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 16:16:12,560 [INFO] Frames erstellen für away_37 mit 237 Frames bei step size 125 für J03WR9 mit random in 21.7081 Sekunden
+2025-09-12 16:21:25,590 [INFO] Pitch Result berechnen für away_37 mit 237 Frames für J03WR9 in 313.0299 Sekunden
+2025-09-12 16:21:25,594 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 16:21:54,042 [INFO] Frames erstellen für away_11 mit 227 Frames bei step size 125 für J03WR9 mit random in 20.7195 Sekunden
+2025-09-12 16:26:30,938 [INFO] Pitch Result berechnen für away_11 mit 227 Frames für J03WR9 in 276.8955 Sekunden
+2025-09-12 16:26:30,942 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 16:27:00,007 [INFO] Frames erstellen für away_8 mit 237 Frames bei step size 125 für J03WR9 mit random in 22.0405 Sekunden
+2025-09-12 23:20:59,679 [INFO] Pitch Result berechnen für away_8 mit 237 Frames für J03WR9 in 24839.6725 Sekunden
+2025-09-12 23:20:59,681 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-12 23:48:14,961 [INFO] Frames erstellen für away_7 mit 237 Frames bei step size 125 für J03WR9 mit random in 1628.4046 Sekunden
+2025-09-13 10:04:52,026 [INFO] Pitch Result berechnen für away_7 mit 237 Frames für J03WR9 in 36997.0645 Sekunden
+2025-09-13 10:04:52,029 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-13 11:05:48,317 [INFO] Frames erstellen für away_20 mit 121 Frames bei step size 125 für J03WR9 mit random in 12.3445 Sekunden
+2025-09-13 15:10:17,952 [INFO] Pitch Result berechnen für away_20 mit 121 Frames für J03WR9 in 14669.6331 Sekunden
+2025-09-13 15:10:17,957 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-13 15:16:36,589 [INFO] Frames erstellen für away_32 mit 237 Frames bei step size 125 für J03WR9 mit random in 374.8766 Sekunden
+2025-09-13 23:30:00,486 [INFO] Pitch Result berechnen für away_32 mit 237 Frames für J03WR9 in 29603.8935 Sekunden
+2025-09-13 23:30:00,492 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-14 00:20:19,442 [INFO] Frames erstellen für away_6 mit 121 Frames bei step size 125 für J03WR9 mit random in 3011.5303 Sekunden
+2025-09-14 07:43:01,793 [INFO] Pitch Result berechnen für away_6 mit 121 Frames für J03WR9 in 26562.3491 Sekunden
+2025-09-14 07:43:01,796 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-14 08:02:23,221 [INFO] Frames erstellen für away_2 mit 237 Frames bei step size 125 für J03WR9 mit random in 1157.6356 Sekunden
+2025-09-14 17:12:44,338 [INFO] Pitch Result berechnen für away_2 mit 237 Frames für J03WR9 in 33021.1158 Sekunden
+2025-09-14 17:12:44,345 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-14 18:13:45,043 [INFO] Frames erstellen für away_25 mit 116 Frames bei step size 125 für J03WR9 mit random in 12.3551 Sekunden
+2025-09-14 22:18:24,895 [INFO] Pitch Result berechnen für away_25 mit 116 Frames für J03WR9 in 14679.8502 Sekunden
+2025-09-14 22:18:24,898 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-14 23:19:18,940 [INFO] Frames erstellen für away_19 mit 10 Frames bei step size 125 für J03WR9 mit random in 1.4320 Sekunden
+2025-09-14 23:19:27,459 [INFO] Pitch Result berechnen für away_19 mit 10 Frames für J03WR9 in 8.5175 Sekunden
+2025-09-14 23:19:27,459 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-14 23:19:29,650 [INFO] Frames erstellen für away_27 mit 20 Frames bei step size 125 für J03WR9 mit random in 1.8285 Sekunden
+2025-09-15 11:54:01,002 [INFO] Pitch Result berechnen für away_27 mit 20 Frames für J03WR9 in 45271.3517 Sekunden
+2025-09-15 11:54:01,004 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-15 12:02:00,894 [INFO] Frames erstellen für home_25 mit 134 Frames bei step size 125 für J03WR9 mit all_positions in 57.3334 Sekunden
+2025-09-15 12:16:43,958 [INFO] Pitch Result berechnen für home_25 mit 134 Frames für J03WR9 in 883.0620 Sekunden
+2025-09-15 12:16:43,959 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-15 14:14:15,497 [INFO] Frames erstellen für home_25 mit 117 Frames bei step size 125 für J03WPY mit all_positions in 46.6103 Sekunden
+2025-09-15 14:26:22,722 [INFO] Pitch Result berechnen für home_25 mit 117 Frames für J03WPY in 727.2223 Sekunden
+2025-09-15 14:26:22,726 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-15 14:32:38,312 [INFO] Frames erstellen für home_25 mit 143 Frames bei step size 125 für J03WOY mit all_positions in 53.8197 Sekunden
+2025-09-15 14:48:00,827 [INFO] Pitch Result berechnen für home_25 mit 143 Frames für J03WOY in 922.5146 Sekunden
+2025-09-15 14:48:00,831 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-15 14:56:42,012 [INFO] Frames erstellen für home_25 mit 127 Frames bei step size 125 für J03WOH mit all_positions in 47.1018 Sekunden
+2025-09-15 15:12:21,648 [INFO] Pitch Result berechnen für home_25 mit 127 Frames für J03WOH in 939.6346 Sekunden
+2025-09-15 15:12:21,650 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 20}
+2025-09-15 15:15:46,374 [INFO] Frames erstellen für home_25 mit 127 Frames bei step size 125 für J03WOH mit random in 31.8279 Sekunden
+2025-09-15 15:23:40,636 [INFO] Pitch Result berechnen für home_25 mit 127 Frames für J03WOH in 474.2617 Sekunden
+2025-09-15 15:23:40,637 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 50}
+2025-09-15 15:24:47,164 [INFO] Frames erstellen für home_25 mit 143 Frames bei step size 125 für J03WOY mit random in 33.6337 Sekunden
+2025-09-15 15:35:00,806 [INFO] Pitch Result berechnen für home_25 mit 143 Frames für J03WOY in 613.6417 Sekunden
+2025-09-15 15:35:00,809 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 50}
+2025-09-15 15:42:51,078 [INFO] Frames erstellen für home_25 mit 117 Frames bei step size 125 für J03WPY mit random in 27.0671 Sekunden
+2025-09-15 15:50:38,792 [INFO] Pitch Result berechnen für home_25 mit 117 Frames für J03WPY in 467.7128 Sekunden
+2025-09-15 15:50:38,797 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 50}
+2025-09-15 16:17:15,601 [INFO] Frames erstellen für home_25 mit 134 Frames bei step size 125 für J03WR9 mit random in 32.8963 Sekunden
+2025-09-15 16:26:40,470 [INFO] Pitch Result berechnen für home_25 mit 134 Frames für J03WR9 in 564.8668 Sekunden
+2025-09-15 16:26:40,476 [INFO] Params des oben genannten Runs: {'max_radius': 5, 'opt_step_size': 1, 'min_dist': 2, 'n': 50}
+2025-09-17 08:54:25,829 [INFO] Frames erstellen für home_25 mit 134 Frames bei step size 125 für J03WR9 mit random in 52.2062 Sekunden

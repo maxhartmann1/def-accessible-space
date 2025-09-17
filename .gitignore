@@ -17,3 +17,6 @@ venv/
 datasets/
 simulation_results/
 cache/
+cache_new/
+.DS_Store
+launch.json
