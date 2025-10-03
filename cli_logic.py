@@ -1,4 +1,3 @@
-from curses import window
 from databallpy.utils.constants import OPEN_GAME_IDS_DFL
 from databallpy import get_saved_game, get_open_game
 from pathlib import Path
@@ -11,7 +10,6 @@ import accessible_space
 import joblib
 import logging
 import sys
-import inspect
 
 logging.basicConfig(
     filename="berechnung.log",
@@ -81,7 +79,10 @@ def load_game(game_id):
     if game_id == "metrica":
         path = "datasets/"
     else:
-        path = "datasets/IDSSE"
+        path = "datasets/IDSSE/"
+
+    if "notebooks" in str(Path.cwd()):
+        path = "../" + path
 
     if os.path.exists(path + game_id):
         game = get_saved_game(name=game_id, path=path)
@@ -149,36 +150,46 @@ def calculate_pitch_result(df_frameified, game_id, frame_step_size):
         print("Pitch Result geladen aus Cache.")
     else:
         start_time = time()
+        print(
+            "geladen von:",
+            getattr(accessible_space, "__file__", None)
+            or accessible_space.__spec__.origin,
+        )
+        print(
+            "search locations:",
+            list(accessible_space.__spec__.submodule_search_locations or []),
+        )
+        df_frameified = df_frameified[df_frameified["frame"] == 153037]
         pitch_result = accessible_space.get_dangerous_accessible_space(
             df_frameified,
             frame_col="frame",
             player_col="player_id",
             ball_player_id="ball",
-            team_col="team_id",
             x_col="player_x",
             y_col="player_y",
             vx_col="player_vx",
             vy_col="player_vy",
+            team_col="team_id",
             period_col="period_id",
             team_in_possession_col="team_possession",
             attacking_direction_col=None,
             infer_attacking_direction=True,
-            additional_fields_to_return=None,
-            use_progress_bar=True,
             respect_offside=True,
             player_in_possession_col="player_possession",
+            use_progress_bar=False,
         )
         duration = time() - start_time
-        joblib.dump(pitch_result, pitch_result_path)
-        logging.info(
-            f"Pitch Result bei step size {frame_step_size} für {game_id} in {duration:.4f} Sekunden"
-        )
+        # joblib.dump(pitch_result, pitch_result_path)
+        # logging.info(
+        #     f"Pitch Result bei step size {frame_step_size} für {game_id} in {duration:.4f} Sekunden"
+        # )
         print("Pitch Result berechnet.")
 
     df_frameified["AS"] = pitch_result.acc_space
     df_frameified["DAS"] = pitch_result.das
     frame_list = df_frameified["frame"].unique()
-
+    print(df_frameified[df_frameified["frame"] == 153037])
+    sys.exit(0)
     frame_list_path = (
         Path("cache_new")
         / f"pitch_results/frame_list_{game_id}_step{frame_step_size}.csv"
