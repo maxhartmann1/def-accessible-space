@@ -674,6 +674,7 @@ def get_expected_pass_completion(
             df_tracking_passes[tracking_attacking_direction_col] = infer_playing_direction(
                 df_tracking_passes, team_col=tracking_team_col, period_col=tracking_period_col,
                 team_in_possession_col=tracking_team_in_possession_col, x_col=tracking_x_col, ball_team=None,
+                frame_col=unique_frame_col,
             )
         if tracking_attacking_direction_col is not None:
             fr2playingdirection = df_tracking_passes[[unique_frame_col, tracking_attacking_direction_col]].set_index(unique_frame_col).to_dict()[tracking_attacking_direction_col]
@@ -877,9 +878,18 @@ def get_dangerous_accessible_space(
             raise ValueError("Inferring attacking direction but 'period_col' is unset. If you have data across multiple halfs, specify 'period_col', otherwise pass 'period_col'=None.")
         period_col = None
 
+    if period_col is not None and period_col not in df_tracking.columns:
+        raise ValueError(f"Specified column period_col='{period_col}' is not found in tracking data.")
+
+    if period_col == frame_col:
+        raise ValueError(f"Passed arguments period_col='{period_col}' and frame_col='{frame_col}' are the same column.")
+
     _check_ball_in_tracking_data(df_tracking, player_col, ball_player_id)
 
-    df_tracking = df_tracking.copy()
+    df_tracking = df_tracking[df_tracking[team_in_possession_col].notna()].copy()  # DAS is only valid when a team has possession
+
+    if df_tracking.empty:
+        raise ValueError("Tracking data is empty or contains no non-NaN team in possession.")
 
     PLAYER_POS, BALL_POS, players, player_teams, controlling_teams, frame_to_index, player_to_index = transform_into_arrays(
         df_tracking, frame_col=frame_col, player_col=player_col,
@@ -891,7 +901,7 @@ def get_dangerous_accessible_space(
         PASSERS = df_tracking.drop_duplicates(frame_col)[player_in_possession_col].values  # F
     else:
         if respect_offside:
-            warnings.warn("If 'respect_offside' is set to True, 'passer_col' should be set to the column containing the passer, otherwise ball carrier might be identified as offside.")
+            warnings.warn("If 'respect_offside' is set to True, 'player_in_possession_col' should be set to the column containing the ball carrier, otherwise the ball carrier might be mis-identified as offside.")
         PASSERS = None
     # if exclude_passer:
     #     if passer_col not in df_tracking.columns:
@@ -915,7 +925,7 @@ def get_dangerous_accessible_space(
         df_tracking.loc[df_tracking[player_col] == ball_player_id, team_col] = None
         df_tracking[attacking_direction_col] = infer_playing_direction(
             df_tracking, team_col=team_col, period_col=period_col, team_in_possession_col=team_in_possession_col,
-            x_col=x_col, ball_team=None,
+            x_col=x_col, ball_team=None, frame_col=frame_col,
         )
     if attacking_direction_col is not None:
         fr2playingdirection = df_tracking[[frame_col, attacking_direction_col]].set_index(frame_col).to_dict()[attacking_direction_col]
@@ -995,7 +1005,7 @@ def get_individual_dangerous_accessible_space(
     # Tracking schema
     frame_col="frame_id", player_col="player_id", ball_player_id="ball", team_col="team_id", x_col="x",
     y_col="y", vx_col="vx", vy_col="vy", attacking_direction_col=None, period_col=_unset,
-    team_in_possession_col="team_in_possession", passer_to_exclude_col=None,
+    team_in_possession_col="team_in_possession", player_in_possession_col=None,
 
     # Pitch coordinate system
     x_pitch_min=-52.5, x_pitch_max=52.5, y_pitch_min=-34, y_pitch_max=34,
@@ -1044,7 +1054,7 @@ def get_individual_dangerous_accessible_space(
     ret = get_dangerous_accessible_space(
         df_tracking,
         frame_col, player_col, ball_player_id, team_col, x_col, y_col, vx_col, vy_col, attacking_direction_col,
-        period_col, team_in_possession_col, passer_to_exclude_col, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max,
+        period_col, team_in_possession_col, player_in_possession_col, x_pitch_min, x_pitch_max, y_pitch_min, y_pitch_max,
         infer_attacking_direction, exclude_passer, respect_offside, danger_weight, chunk_size, return_cropped_result, additional_fields_to_return,
         use_progress_bar, n_angles, phi_offset, n_v0, v0_min, v0_max, pass_start_location_offset, time_offset_ball,
         radial_gridsize, b0, b1, player_velocity, keep_inertial_velocity, use_max, v_max, a_max, inertial_seconds,
@@ -1057,44 +1067,41 @@ def get_individual_dangerous_accessible_space(
     areas = integrate_surfaces(ret.simulation_result).player_poss  # F x P
     dangeorus_areas = integrate_surfaces(ret.dangerous_result).player_poss  # F x P
 
-    def foo(x):
-        return dangeorus_areas[int(x["frame_index"]), int(x["player_index"])]
-
-    i_notna = ret.frame_index.notna() & ret.player_index.notna()
-    df = pd.DataFrame(data=np.array([ret.frame_index, ret.player_index]).transpose(), columns=["frame_index", "player_index"])
+    i_notna = df_tracking["frame_index"].notna() & df_tracking["player_index"].notna()
+    df = pd.DataFrame(data=np.array([df_tracking["frame_index"], df_tracking["player_index"]]).transpose(), columns=["frame_index", "player_index"], index=df_tracking.index)
 
     player_acc_space = pd.Series(index=df_tracking.index, dtype=np.float64)
     player_acc_space[i_notna] = df.loc[i_notna].apply(lambda x: areas[int(x["frame_index"]), int(x["player_index"])], axis=1)
 
     player_das = pd.Series(index=df_tracking.index, dtype=np.float64)
-    player_das[i_notna] = df.loc[i_notna].apply(lambda x: foo(x), axis=1)
+    player_das[i_notna] = df.loc[i_notna].apply(lambda x: dangeorus_areas[int(x["frame_index"]), int(x["player_index"])], axis=1)
 
     return ReturnValueIndividualDAS(ret.acc_space, ret.das, player_acc_space, player_das, ret.frame_index, ret.player_index, ret.simulation_result, ret.dangerous_result)
 
 
 def infer_playing_direction(
-    df_tracking, team_col="team_id", period_col="period_id", team_in_possession_col="team_in_possession", x_col="x",
-    ball_team=None,
+    df_tracking, team_col="team_id", period_col="period_id",
+    team_in_possession_col="team_in_possession", x_col="x", ball_team=None, frame_col="frame_id",
 ):
     """
     Automatically infer playing direction based on the mean x position of each teams in each period.
 
-    >>> df_tracking = pd.DataFrame({"period": [0, 0, 1, 1], "team_id": ["H", "A", "H", "A"], "team_in_possession": ["H", "H", "A", "A"], "x": [1, 2, 3, 4], "y": [5, 6, 7, 8]})
+    >>> df_tracking = pd.DataFrame({"period": [0, 0, 1, 1], "frame_id": [0, 0, 1, 1], "team_id": ["H", "A", "H", "A"], "team_in_possession": ["H", "H", "A", "A"], "x": [1, 2, 3, 4], "y": [5, 6, 7, 8]})
     >>> df_tracking
-       period team_id team_in_possession  x  y
-    0       0       H                  H  1  5
-    1       0       A                  H  2  6
-    2       1       H                  A  3  7
-    3       1       A                  A  4  8
+       period  frame_id team_id team_in_possession  x  y
+    0       0         0       H                  H  1  5
+    1       0         0       A                  H  2  6
+    2       1         1       H                  A  3  7
+    3       1         1       A                  A  4  8
     >>> df_tracking["playing_direction"] = infer_playing_direction(df_tracking, team_col="team_id", period_col="period", team_in_possession_col="team_in_possession", x_col="x")
     >>> df_tracking
-       period team_id team_in_possession  x  y  playing_direction
-    0       0       H                  H  1  5                1.0
-    1       0       A                  H  2  6                1.0
-    2       1       H                  A  3  7               -1.0
-    3       1       A                  A  4  8               -1.0
+       period  frame_id team_id team_in_possession  x  y  playing_direction
+    0       0         0       H                  H  1  5                1.0
+    1       0         0       A                  H  2  6                1.0
+    2       1         1       H                  A  3  7               -1.0
+    3       1         1       A                  A  4  8               -1.0
     """
-    _check_presence_of_required_columns(df_tracking, "df_tracking", column_names=["team_col", "team_in_possession_col", "x_col"], column_values=[team_col, team_in_possession_col, x_col])
+    _check_presence_of_required_columns(df_tracking, "df_tracking", column_names=["team_col", "team_in_possession_col", "x_col", "frame_col"], column_values=[team_col, team_in_possession_col, x_col, frame_col])
     if period_col is not None:
         _check_presence_of_required_columns(df_tracking, "df_tracking", ["period_col"], [period_col], "Either specify period_col or set to None if your data has no separate periods.")
 
@@ -1110,28 +1117,28 @@ def infer_playing_direction(
         teams = [team for team in teams if team != ball_team]
 
     if len(teams) != 2:
-        warnings.warn(f"Did not find exactly 2 teams while inferring playing direction: {teams}, so inferred playing direction may be wrong. Check if data has data from exactly 2 teams and specify 'ball_team' if the ball has a non-None team id.")
+        ValueError(f"Did not find exactly 2 teams while inferring playing direction: {teams}, so inferred playing direction may be wrong. Check if data has data from exactly 2 teams and specify 'ball_team' if the ball has a non-None team id.")
 
     if ball_team is not None:
         df_tracking_for_mean = df_tracking[df_tracking[team_col] != ball_team]
     else:
         df_tracking_for_mean = df_tracking
 
+    playing_direction_map = []
     for period_id, df_tracking_period in df_tracking_for_mean.groupby(_period_col):
         x_mean = df_tracking_period.groupby(team_col)[x_col].mean()
         smaller_x_team = x_mean.idxmin()
         greater_x_team = [team for team in teams if team != smaller_x_team][0]
         playing_direction[period_id] = {smaller_x_team: 1, greater_x_team: -1}
+        playing_direction_map.append({_period_col: period_id, team_in_possession_col: smaller_x_team, "playing_direction": 1.0})
+        playing_direction_map.append({_period_col: period_id, team_in_possession_col: greater_x_team, "playing_direction": -1.0})
 
-    new_attacking_direction = pd.Series(index=df_tracking.index, dtype=np.float64)
-
-    for period_id in playing_direction:
-        i_period = df_tracking[_period_col] == period_id
-        for team_id, direction in playing_direction[period_id].items():
-            i_period_team_possession = i_period & (df_tracking[team_in_possession_col] == team_id)
-            new_attacking_direction.loc[i_period_team_possession] = direction
-
-    return new_attacking_direction
+    df_map = pd.DataFrame(playing_direction_map)
+    return df_tracking.merge(
+        df_map,
+        on=[_period_col, team_in_possession_col],
+        how="left"
+    )["playing_direction"]
 
 
 def plot_expected_completion_surface(simulation_result: SimulationResult, frame_index=0, attribute="attack_poss_density", player_index=None, color="blue", plot_gridpoints=True):  # TODO gridpoints False

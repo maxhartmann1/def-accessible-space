@@ -345,7 +345,9 @@ def get_kloppy_events(dataset_nr):
         df["is_pass"] = (df["event_type"].isin(["PASS", "BALL_LOST", "BALL_OUT"])) \
                         & (~df["Subtype"].isin(["CLEARANCE", "HEAD-CLEARANCE", "HEAD-INTERCEPTION-CLEARANCE"])) \
                         & (df["frame_id"] != df["end_frame_id"])
-
+        df["is_cross"] = df["Subtype"] == "CROSS"
+        df["is_clearance"] = df["Subtype"] == "CLEARANCE"
+        st.write(df["is_clearance"].sum(), "/", len(df), "clearances")
         df["is_high"] = df["Subtype"].isin([
             "CROSS",
             # "CLEARANCE",
