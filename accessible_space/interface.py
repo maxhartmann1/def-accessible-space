@@ -888,6 +888,9 @@ def get_dangerous_accessible_space(
 
     df_tracking = df_tracking[df_tracking[team_in_possession_col].notna()].copy()  # DAS is only valid when a team has possession
 
+    original_index = df_tracking.index
+    df_tracking = df_tracking.reset_index(drop=True)
+
     if df_tracking.empty:
         raise ValueError("Tracking data is empty or contains no non-NaN team in possession.")
 
@@ -994,6 +997,13 @@ def get_dangerous_accessible_space(
 
     frame_index = df_tracking[frame_col].map(frame_to_index)
     player_index = df_tracking[player_col].map(player_to_index)
+
+    # reset original index
+    df_tracking.index = original_index
+    as_series.index = original_index
+    das_series.index = original_index
+    frame_index.index = original_index
+    player_index.index = original_index
 
     return ReturnValueDAS(as_series, das_series, frame_index, player_index, simulation_result, dangerous_result)
 
