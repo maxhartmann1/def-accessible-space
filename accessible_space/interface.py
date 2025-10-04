@@ -1091,7 +1091,7 @@ def get_individual_dangerous_accessible_space(
 
 def infer_playing_direction(
     df_tracking, team_col="team_id", period_col="period_id",
-    team_in_possession_col="team_in_possession", x_col="x", ball_team=None, frame_col="frame_id",
+    team_in_possession_col="team_in_possession", x_col="x", ball_team=_unset, frame_col="frame_id",
 ):
     """
     Automatically infer playing direction based on the mean x position of each teams in each period.
@@ -1114,6 +1114,10 @@ def infer_playing_direction(
     _check_presence_of_required_columns(df_tracking, "df_tracking", column_names=["team_col", "team_in_possession_col", "x_col", "frame_col"], column_values=[team_col, team_in_possession_col, x_col, frame_col])
     if period_col is not None:
         _check_presence_of_required_columns(df_tracking, "df_tracking", ["period_col"], [period_col], "Either specify period_col or set to None if your data has no separate periods.")
+
+    if ball_team is _unset:
+        warnings.warn("No 'ball_team' specified, so playing direction will be inferred from the teams in the data. If the ball has a non-None team id, specify 'ball_team' to avoid wrong inference.")
+        ball_team = None
 
     playing_direction = {}
     if period_col is None:
