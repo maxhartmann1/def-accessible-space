@@ -179,7 +179,7 @@ def simulate_passes(
         PLAYERS_NORM_X = PLAYER_POS[:, :, 0] * playing_direction[:, np.newaxis]  # F x P
         BALL_NORM_X = BALL_POS[:, 0] * playing_direction
 
-        is_attacking_team = passer_teams[:, np.newaxis] == player_teams[np.newaxis, :]  # F x P
+        is_attacking_team = (passer_teams[:, np.newaxis] == player_teams[np.newaxis, :]) | ~np.isfinite(PLAYERS_NORM_X)  # F x P
         SECOND_LAST_DEFENDER_NORM_X = np.ma.sort(np.ma.array(PLAYERS_NORM_X, mask=is_attacking_team), axis=1, endwith=False)[::-1][:, -2]
         X_OFFSIDE_LINE = np.maximum(SECOND_LAST_DEFENDER_NORM_X, BALL_NORM_X)  # F
 
