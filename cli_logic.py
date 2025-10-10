@@ -11,6 +11,8 @@ import joblib
 import logging
 import sys
 
+from importlib.metadata import version, PackageNotFoundError
+
 logging.basicConfig(
     filename="berechnung.log",
     level=logging.INFO,
@@ -19,6 +21,15 @@ logging.basicConfig(
 
 
 def calculate(args):
+    print(
+        "geladen von:",
+        getattr(accessible_space, "__file__", None) or accessible_space.__spec__.origin,
+    )
+    try:
+        print(version("accessible_space"))
+    except PackageNotFoundError:
+        print("Nicht installiert über pip")
+
     # Preperation
     game_id = choose_game(args.game_id)
     game = load_game(game_id)
@@ -150,15 +161,6 @@ def calculate_pitch_result(df_frameified, game_id, frame_step_size):
         print("Pitch Result geladen aus Cache.")
     else:
         start_time = time()
-        print(
-            "geladen von:",
-            getattr(accessible_space, "__file__", None)
-            or accessible_space.__spec__.origin,
-        )
-        print(
-            "search locations:",
-            list(accessible_space.__spec__.submodule_search_locations or []),
-        )
         df_frameified = df_frameified[df_frameified["frame"] == 153037]
         pitch_result = accessible_space.get_dangerous_accessible_space(
             df_frameified,
@@ -178,6 +180,7 @@ def calculate_pitch_result(df_frameified, game_id, frame_step_size):
             player_in_possession_col="player_possession",
             use_progress_bar=False,
         )
+        print(pitch_result)
         duration = time() - start_time
         # joblib.dump(pitch_result, pitch_result_path)
         # logging.info(
