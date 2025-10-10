@@ -400,7 +400,7 @@ def get_das_gained(
        frame_id  target_frame_id player_id receiver_id team_id     x     y  x_target  y_target  pass_outcome receiver_team_id         event_string    AS_Gained  DAS_Gained  fr_index
     0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)   657.452117   29.500628         0
     1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0) -3106.024327  -20.786560         1
-    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -2348.313551   -0.158608         2
+    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -2542.163913   -0.270949         2
     """
     _check_presence_of_required_columns(df_passes, "df_passes", ["event_success_col", "event_frame_col", "event_target_frame_col"], [event_success_col, event_frame_col, event_target_frame_col])
     _check_presence_of_required_columns(df_tracking, "df_tracking", ["tracking_frame_col", "tracking_x_col", "tracking_y_col", "tracking_player_col", "tracking_team_col"], [tracking_frame_col, tracking_x_col, tracking_y_col, tracking_player_col, tracking_team_col])
@@ -888,6 +888,9 @@ def get_dangerous_accessible_space(
 
     df_tracking = df_tracking[df_tracking[team_in_possession_col].notna()].copy()  # DAS is only valid when a team has possession
 
+    original_index = df_tracking.index
+    df_tracking = df_tracking.reset_index(drop=True)
+
     if df_tracking.empty:
         raise ValueError("Tracking data is empty or contains no non-NaN team in possession.")
 
@@ -995,6 +998,13 @@ def get_dangerous_accessible_space(
     frame_index = df_tracking[frame_col].map(frame_to_index)
     player_index = df_tracking[player_col].map(player_to_index)
 
+    # reset original index
+    df_tracking.index = original_index
+    as_series.index = original_index
+    das_series.index = original_index
+    frame_index.index = original_index
+    player_index.index = original_index
+
     return ReturnValueDAS(as_series, das_series, frame_index, player_index, simulation_result, dangerous_result)
 
 
@@ -1081,7 +1091,7 @@ def get_individual_dangerous_accessible_space(
 
 def infer_playing_direction(
     df_tracking, team_col="team_id", period_col="period_id",
-    team_in_possession_col="team_in_possession", x_col="x", ball_team=None, frame_col="frame_id",
+    team_in_possession_col="team_in_possession", x_col="x", ball_team=_unset, frame_col="frame_id",
 ):
     """
     Automatically infer playing direction based on the mean x position of each teams in each period.
@@ -1104,6 +1114,10 @@ def infer_playing_direction(
     _check_presence_of_required_columns(df_tracking, "df_tracking", column_names=["team_col", "team_in_possession_col", "x_col", "frame_col"], column_values=[team_col, team_in_possession_col, x_col, frame_col])
     if period_col is not None:
         _check_presence_of_required_columns(df_tracking, "df_tracking", ["period_col"], [period_col], "Either specify period_col or set to None if your data has no separate periods.")
+
+    if ball_team is _unset:
+        warnings.warn("No 'ball_team' specified, so playing direction will be inferred from the teams in the data. If the ball has a non-None team id, specify 'ball_team' to avoid wrong inference.")
+        ball_team = None
 
     playing_direction = {}
     if period_col is None:
