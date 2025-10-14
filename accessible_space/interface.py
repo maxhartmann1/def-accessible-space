@@ -240,23 +240,27 @@ def per_object_frameify_tracking_data(
     """
     Convert tracking data with '1 row per frame' into '1 row per frame + player' format
 
-    >>> df_tracking = pd.DataFrame({"frame_id": [0, 1], "A_x": [1.2, 1.3], "A_y": [-5.1, -4.9], "B_x": [15.0, 15.0], "B_y": [0.0, 0.1]})
+    >>> df_tracking = pd.DataFrame({"frame_id": [0, 1], "A_x": [1.2, 1.3], "A_y": [-5.1, -4.9], "B_x": [15.0, 15.0], "B_y": [0.0, 0.1], "B_z": [0.2, 0.1]})
     >>> df_tracking
-       frame_id  A_x  A_y   B_x  B_y
-    0         0  1.2 -5.1  15.0  0.0
-    1         1  1.3 -4.9  15.0  0.1
-    >>> per_object_frameify_tracking_data(df_tracking, "frame_id", [["A_x", "A_y"], ["B_x", "B_y"]], ["Player A", "Player B"], {"Player A": "Home", "Player B": "Guest"}, ["x", "y"])
-       frame_id     x    y player_id team_id
-    0         0   1.2 -5.1  Player A    Home
-    1         1   1.3 -4.9  Player A    Home
-    2         0  15.0  0.0  Player B   Guest
-    3         1  15.0  0.1  Player B   Guest
+       frame_id  A_x  A_y   B_x  B_y  B_z
+    0         0  1.2 -5.1  15.0  0.0  0.2
+    1         1  1.3 -4.9  15.0  0.1  0.1
+    >>> per_object_frameify_tracking_data(df_tracking, "frame_id", [["A_x", "A_y"], ["B_x", "B_y", "B_z"]], ["Player A", "Player B"], {"Player A": "Home", "Player B": "Guest"}, ["x", "y", "z"])
+       frame_id     x    y    z player_id team_id
+    0         0   1.2 -5.1  NaN  Player A    Home
+    1         1   1.3 -4.9  NaN  Player A    Home
+    2         0  15.0  0.0  0.2  Player B   Guest
+    3         1  15.0  0.1  0.1  Player B   Guest
     """
     dfs_player = []
     for player_nr, player in enumerate(players):
         coordinate_cols_player = coordinate_cols[player_nr]
         df_player = df_tracking[[frame_col] + coordinate_cols_player]
         df_player = df_player.rename(columns={coord_col: new_coord_col for coord_col, new_coord_col in zip(coordinate_cols_player, new_coordinate_cols)})
+        for col in new_coordinate_cols:
+            if col not in df_player.columns:
+                df_player[col] = pd.NA
+
         df_player[new_player_col] = player
         df_player[new_team_col] = player_to_team.get(player, None)
         dfs_player.append(df_player)
