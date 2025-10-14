@@ -404,7 +404,7 @@ def get_das_gained(
        frame_id  target_frame_id player_id receiver_id team_id     x     y  x_target  y_target  pass_outcome receiver_team_id         event_string    AS_Gained  DAS_Gained  fr_index
     0         0                6         A           B    Home  -0.1   0.0        20        30             1             Home   0: Pass A -> B (1)   657.452117   29.500628         0
     1         6                9         B           X    Home  25.0  30.0        15        30             0             Away   6: Pass B -> X (0) -3106.024327  -20.786560         1
-    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -2348.313551   -0.158608         2
+    2        14               16         C           Y    Home -13.8  40.1        49        -1             0             Away  14: Pass C -> Y (0) -2542.163913   -0.270949         2
     """
     _check_presence_of_required_columns(df_passes, "df_passes", ["event_success_col", "event_frame_col", "event_target_frame_col"], [event_success_col, event_frame_col, event_target_frame_col])
     _check_presence_of_required_columns(df_tracking, "df_tracking", ["tracking_frame_col", "tracking_x_col", "tracking_y_col", "tracking_player_col", "tracking_team_col"], [tracking_frame_col, tracking_x_col, tracking_y_col, tracking_player_col, tracking_team_col])
