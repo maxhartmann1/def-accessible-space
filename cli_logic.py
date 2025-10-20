@@ -21,14 +21,6 @@ logging.basicConfig(
 
 
 def calculate(args):
-    print(
-        "geladen von:",
-        getattr(accessible_space, "__file__", None) or accessible_space.__spec__.origin,
-    )
-    try:
-        print(version("accessible_space"))
-    except PackageNotFoundError:
-        print("Nicht installiert über pip")
 
     # Preperation
     game_id = choose_game(args.game_id)
@@ -49,10 +41,21 @@ def calculate(args):
     }
 
     # Spieler optimieren
-    if "all" in args.player:
+    if "none" in (s.casefold() for s in args.player):
+        print("DAS nur für Ausgangsframes")
+        return
+    elif "all" in (s.casefold() for s in args.player):
         players = game.get_column_ids()
     else:
         players = args.player
+
+    if args.cut > 0:
+        df_frameified = filter_tracking_data_post_pitch_result(
+            df_frameified, frame_list, args.cut
+        )
+        # print(df_frameified.shape)
+        # print(frame_list.shape)
+        args.method = [m + f"_cut_{args.cut}" for m in args.method]
 
     calculate_player_optization(
         df_frameified,
@@ -63,6 +66,7 @@ def calculate(args):
         args.method,
         frame_step_size,
         params,
+        args.cut,
     )
 
 
@@ -128,6 +132,13 @@ def filter_tracking_data(game, frame_step_size):
     return df_tracking_filtered
 
 
+def filter_tracking_data_post_pitch_result(df, frame_list, cut):
+    # print(df.shape)
+    df = df[df["DAS"] > cut]
+    # print(df.shape)
+    return df
+
+
 def frameify_tracking_data(df_tracking_filtered, game):
     coordinate_cols = []
     player_to_team = {}
@@ -161,7 +172,6 @@ def calculate_pitch_result(df_frameified, game_id, frame_step_size):
         print("Pitch Result geladen aus Cache.")
     else:
         start_time = time()
-        df_frameified = df_frameified[df_frameified["frame"] == 153037]
         pitch_result = accessible_space.get_dangerous_accessible_space(
             df_frameified,
             frame_col="frame",
@@ -178,21 +188,18 @@ def calculate_pitch_result(df_frameified, game_id, frame_step_size):
             infer_attacking_direction=True,
             respect_offside=True,
             player_in_possession_col="player_possession",
-            use_progress_bar=False,
+            use_progress_bar=True,
         )
-        print(pitch_result)
         duration = time() - start_time
-        # joblib.dump(pitch_result, pitch_result_path)
-        # logging.info(
-        #     f"Pitch Result bei step size {frame_step_size} für {game_id} in {duration:.4f} Sekunden"
-        # )
+        joblib.dump(pitch_result, pitch_result_path)
+        logging.info(
+            f"Pitch Result: step size: {frame_step_size} | game: {game_id} | zeit: {duration:.4f} | anzahl frame: {df_frameified["frame"].nunique()}"
+        )
         print("Pitch Result berechnet.")
 
     df_frameified["AS"] = pitch_result.acc_space
     df_frameified["DAS"] = pitch_result.das
     frame_list = df_frameified["frame"].unique()
-    print(df_frameified[df_frameified["frame"] == 153037])
-    sys.exit(0)
     frame_list_path = (
         Path("cache_new")
         / f"pitch_results/frame_list_{game_id}_step{frame_step_size}.csv"
@@ -205,11 +212,20 @@ def calculate_pitch_result(df_frameified, game_id, frame_step_size):
 
 
 def calculate_player_optization(
-    df_frameified, players, game, game_id, frame_list, methods, frame_step_size, params
+    df_frameified,
+    players,
+    game,
+    game_id,
+    frame_list,
+    methods,
+    frame_step_size,
+    params,
+    cut,
 ):
     df = pd.DataFrame(game.tracking_data.copy())
     df_pre_frames = get_pre_frames(df, game.tracking_data.frame_rate, frame_list)
     param_path = f"R_{params["max_radius"]}-S_{params["opt_step_size"]}-D_{params["min_dist"]}-N_{params["n"]}"
+    param_path = param_path + f"-C_{cut}" if cut > 0 else param_path
     for player in players:
         subset = df_frameified[df_frameified["player_id"] == player]
         if subset.empty:
@@ -287,6 +303,11 @@ def find_optimal_position(
         )
         pitch_result_optimized = joblib.load(pitch_result_path)
         frame_list_optimized = np.loadtxt(frame_list_path, delimiter=",", dtype=str)
+
+    elif method == "grid_search":
+        print("grid_search")
+        sys.exit(0)
+
     else:
         (
             df_frameified_simulated,

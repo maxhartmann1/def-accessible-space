@@ -66,13 +66,12 @@ def optimize_player_position(
             y_center,
             params["min_dist"],
         )
-        if method == "random":
+        if "random" in method:
             sample = random.sample(
                 valid_positions, min(params["n"], len(valid_positions))
             )
         else:
             sample = valid_positions
-            logging.info(f"Sample-Größe bei all_positions für {player}: {len(sample)}.")
         for dx, dy in sample:
             new_x, new_y = x_center + dx, y_center + dy
 
@@ -99,10 +98,6 @@ def optimize_player_position(
 
     duration = time() - start_time
     print(f"Frames erstellen in  {duration:.4f} Sekunden")
-    logging.info(
-        f"Frames erstellen für {player} mit {len(def_frame_list)} Frames bei step size {frame_step_size} für {game_id} mit {method} in {duration:.4f} Sekunden"
-    )
-    start_time = time()
 
     pitch_result_optimized = accessible_space.get_dangerous_accessible_space(
         df_frameified_simulated_position,
@@ -135,9 +130,8 @@ def optimize_player_position(
     duration = time() - start_time
     print(f"Pitch Result optimieren in  {time() - start_time:.2f} Sekunden")
     logging.info(
-        f"Pitch Result berechnen für {player} mit {len(def_frame_list)} Frames für {game_id} in {duration:.4f} Sekunden"
+        f"Pitch Result Spieler {player}: frame step: {frame_step_size} | game: {game_id} | zeit: {duration:.4f} | anzahl frame: {len(def_frame_list)} | params: {params} | method: {method} | sample: {len(sample)}"
     )
-    logging.info(f"Params des oben genannten Runs: {params}")
 
     return (
         df_frameified_simulated_position,
@@ -189,3 +183,17 @@ def create_valid_positions(
 
 def is_far_from_teammates(x, y, teammates, min_dist):
     return all(np.linalg.norm([x - tx, y - ty]) >= min_dist for tx, ty in teammates)
+
+
+# ### Include grid_search
+# def optimize_player_position_grid(
+#     df_frameified,
+#     player,
+#     frame_list,
+#     params,
+#     df_pre_frames,
+#     method,
+#     game_id,
+#     frame_step_size,
+# ):
+#     simulated

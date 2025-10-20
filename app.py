@@ -388,13 +388,17 @@ if __name__ == "__main__":
     parser.add_argument("--step_size", type=int, default=125)
     parser.add_argument("--player", nargs="+", default=["home_25"])
     parser.add_argument(
-        "--method", nargs="+", choices=["random", "all_positions"], default=["random"]
+        "--method",
+        nargs="+",
+        choices=["random", "all_positions", "grid_search"],
+        default=["random"],
     )
     parser.add_argument("--radius", type=int, default=5)
     parser.add_argument("--opt_step_size", type=float, default=1)
     parser.add_argument("--min_dist", type=float, default=2)
     parser.add_argument("--n", type=int, default=20)
     parser.add_argument("--quality", action="store_true")
+    parser.add_argument("--cut", type=float, default=0.0)
     args = parser.parse_args()
 
     if args.quality:
