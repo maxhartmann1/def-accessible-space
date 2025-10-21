@@ -1,7 +1,7 @@
 from databallpy.utils.constants import OPEN_GAME_IDS_DFL
 from databallpy import get_saved_game, get_open_game
 from pathlib import Path
-from optimizer import optimize_player_position
+from optimizer import optimize_player_position, optimize_random
 from time import time
 import pandas as pd
 import numpy as np
@@ -303,11 +303,6 @@ def find_optimal_position(
         )
         pitch_result_optimized = joblib.load(pitch_result_path)
         frame_list_optimized = np.loadtxt(frame_list_path, delimiter=",", dtype=str)
-
-    elif method == "grid_search":
-        print("grid_search")
-        sys.exit(0)
-
     else:
         (
             df_frameified_simulated,
