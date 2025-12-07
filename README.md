@@ -1,9 +1,10 @@
 # Accessible space
 
-![PyPI Version](https://img.shields.io/pypi/v/accessible-space)
-![Python Versions](https://img.shields.io/badge/Python-%3E=3.7-blue)
+[![PyPI Version](https://img.shields.io/pypi/v/accessible-space)](https://pypi.org/project/accessible-space/)
+[![Python Versions](https://img.shields.io/badge/Python-%3E=3.7-blue)](https://pypi.org/project/accessible-space/)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Fdemo.ipynb)
-![License](https://img.shields.io/github/license/jonas-bischofberger/accessible-space)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jonas-bischofberger/accessible-space/blob/HEAD/accessible_space/apps/demo.ipynb)
+[![License](https://img.shields.io/github/license/jonas-bischofberger/accessible-space)](https://github.com/jonas-bischofberger/accessible-space/blob/HEAD/LICENSE)
 
 This is a provider-agnostic implementation of the **Dangerous Accessible Space (DAS)** model for advanced football (soccer) analytics.
 Based on physical pass simulations, DAS quantifies threatening areas that a team can access by a pass.
@@ -17,7 +18,7 @@ You can use DAS to analyze profound aspects of performance like:
 To learn how to access DAS and related metrics, see the examples below.
 
 If you are interested in understanding the model, there is [a demo notebook explaining its basic workings](https://github.com/jonas-bischofberger/accessible-space/blob/main/accessible_space/apps/demo.ipynb).
-This notebook can also be accessed without installation through [Binder](https://mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Fdemo.ipynb).
+This notebook can also be accessed without installation through [Google Colab](https://colab.research.google.com/github/jonas-bischofberger/accessible-space/blob/main/accessible_space/apps/demo.ipynb) or [Binder](https://mybinder.org/v2/gh/jonas-bischofberger/accessible-space/HEAD?urlpath=%2Fdoc%2Ftree%2Faccessible_space%2Fapps%2Fdemo.ipynb).
 
 ### Installation 
 
@@ -165,3 +166,4 @@ python -m accessible_space tests
 Feel free to reach out!
 
 E-Mail: <a href="mailto:jonas.bischofberger@univie.ac.at">jonas.bischofberger[at]univie.ac.at</a>
+
