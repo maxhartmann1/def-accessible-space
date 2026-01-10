@@ -877,7 +877,7 @@ def get_dangerous_accessible_space(
     missing_columns = [(parameter_name, col) for parameter_name, col in [("frame_col", frame_col), ("player_col", player_col), ("team_col", team_col), ("x_col", x_col), ("y_col", y_col), ("vx_col", vx_col), ("vy_col", vy_col), ("team_in_possession_col", team_in_possession_col)] if col not in df_tracking.columns]
     if len(missing_columns) > 0:
         raise KeyError(f"""Missing column{'s' if len(missing_columns) > 1 else ''} in tracking data: {', '.join(['='.join([parameter_name, "'" + missing_columns + "'"]) for (parameter_name, missing_columns) in missing_columns])}""")
-    if period_col == _unset:
+    if period_col is _unset:
         if infer_attacking_direction:
             raise ValueError("Inferring attacking direction but 'period_col' is unset. If you have data across multiple halfs, specify 'period_col', otherwise pass 'period_col'=None.")
         period_col = None
@@ -905,7 +905,7 @@ def get_dangerous_accessible_space(
     )
     F = PLAYER_POS.shape[0]
     if player_in_possession_col is not None:
-        PASSERS = df_tracking.drop_duplicates(frame_col)[player_in_possession_col].values  # F
+        PASSERS = df_tracking[df_tracking[frame_col].isin(frame_to_index.keys())].drop_duplicates(frame_col)[player_in_possession_col].values  # F
     else:
         if respect_offside:
             warnings.warn("If 'respect_offside' is set to True, 'player_in_possession_col' should be set to the column containing the ball carrier, otherwise the ball carrier might be mis-identified as offside.")
@@ -1141,6 +1141,8 @@ def infer_playing_direction(
         df_tracking_for_mean = df_tracking[df_tracking[team_col] != ball_team]
     else:
         df_tracking_for_mean = df_tracking
+
+    assert len(set(df_tracking_for_mean[team_col].unique()).intersection(set(df_tracking_for_mean[team_in_possession_col].unique()))) > 0, f"team_col '{team_col}' ({df_tracking_for_mean[team_col].unique()}) and team_in_possession_col '{team_in_possession_col}' ({df_tracking_for_mean[team_in_possession_col].unique()}) have no non-ball teams in common, cannot infer playing direction."
 
     playing_direction_map = []
     for period_id, df_tracking_period in df_tracking_for_mean.groupby(_period_col):
