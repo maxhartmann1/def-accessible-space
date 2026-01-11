@@ -1135,7 +1135,7 @@ def infer_playing_direction(
         teams = [team for team in teams if team != ball_team]
 
     if len(teams) != 2:
-        ValueError(f"Did not find exactly 2 teams while inferring playing direction: {teams}, so inferred playing direction may be wrong. Check if data has data from exactly 2 teams and specify 'ball_team' if the ball has a non-None team id.")
+        raise ValueError(f"Did not find exactly 2 teams while inferring playing direction: {teams}, so inferred playing direction may be wrong. Check if data has data from exactly 2 teams and specify 'ball_team' if the ball has a non-None team id.")
 
     if ball_team is not None:
         df_tracking_for_mean = df_tracking[df_tracking[team_col] != ball_team]
@@ -1154,11 +1154,13 @@ def infer_playing_direction(
         playing_direction_map.append({_period_col: period_id, team_in_possession_col: greater_x_team, "playing_direction": -1.0})
 
     df_map = pd.DataFrame(playing_direction_map)
-    return df_tracking.merge(
+    df_tracking["playing_direction"] = df_tracking.merge(
         df_map,
         on=[_period_col, team_in_possession_col],
-        how="left"
-    )["playing_direction"]
+        how="left", validate="m:1"
+    )["playing_direction"].to_numpy()
+
+    return df_tracking["playing_direction"]
 
 
 def plot_expected_completion_surface(simulation_result: SimulationResult, frame_index=0, attribute="attack_poss_density", player_index=None, color="blue", plot_gridpoints=True):  # TODO gridpoints False
