@@ -2,19 +2,13 @@
 name = "accessible_space"
 version = "2.0.15"
 authors = [
-  {name="Jonas Bischofberger", email="jonas.bischofberger@univie.ac.at"},
+    { name = "Jonas Bischofberger", email = "jonas.bischofberger@univie.ac.at" },
 ]
 description = "Implementation of the Dangerous Accessible Space (DAS) passing model for football analytics."
 readme = "README.md"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 requires-python = ">=3.7"
-dependencies = [
-    "matplotlib",
-    "numpy",
-    "pandas",
-    "scipy",
-    "tqdm",
-]
+dependencies = ["matplotlib", "numpy", "pandas", "scipy", "tqdm"]
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -54,7 +48,7 @@ dev = [
 
     "pytest",
     "pytest-cov",
-#    "nbval",
+    #    "nbval",
     "build",
     "twine",
     "setuptools",
@@ -80,7 +74,7 @@ filterwarnings = """
     ignore:Range of tracking Y coordinates:UserWarning
     ignore:Range of tracking X coordinates:UserWarning
 """
-norecursedirs = [
-    ".joblib-cache",
-    "apps",
-]
+norecursedirs = [".joblib-cache", "apps"]
+
+[tool.setuptools]
+packages = ["accessible_space"]
