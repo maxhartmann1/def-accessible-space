@@ -390,7 +390,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--method",
         nargs="+",
-        choices=["random", "all_positions", "grid_search"],
+        choices=["random", "grid_search", "all_positions"],
         default=["random"],
     )
     parser.add_argument("--radius", type=int, default=5)
@@ -399,7 +399,11 @@ if __name__ == "__main__":
     parser.add_argument("--n", type=int, default=20)
     parser.add_argument("--quality", action="store_true")
     parser.add_argument("--cut", type=float, default=0.0)
+    parser.add_argument("--fine_step", type=float)
+    parser.add_argument("--fine_radius", type=float)
     args = parser.parse_args()
+    if args.opt_step_size % 1 == 0:
+        args.opt_step_size = int(args.opt_step_size)
 
     if args.quality:
         possession_spread_report()

@@ -1,17 +1,19 @@
+from math import exp
 from databallpy.utils.constants import OPEN_GAME_IDS_DFL
 from databallpy import get_saved_game, get_open_game
 from pathlib import Path
-from optimizer import optimize_player_position, optimize_random
+from optimizer import optimize_player_position
 from time import time
+from config_paths import CACHE_PATH
 import pandas as pd
 import numpy as np
 import os
+import sys
 import accessible_space
 import joblib
 import logging
-import sys
 
-from importlib.metadata import version, PackageNotFoundError
+import optimizer
 
 logging.basicConfig(
     filename="berechnung.log",
@@ -38,7 +40,12 @@ def calculate(args):
         "opt_step_size": args.opt_step_size,
         "min_dist": args.min_dist,
         "n": args.n,
+        "fine_radius": args.fine_radius,
+        "fine_step": args.fine_step,
     }
+    max_sample = len(optimizer.generate_dx_dy_combinations(params))
+    if max_sample <= params["n"]:
+        args.method = ["all_positions" if "random" in m else m for m in args.method]
 
     # Spieler optimieren
     if "none" in (s.casefold() for s in args.player):
@@ -149,7 +156,6 @@ def frameify_tracking_data(df_tracking_filtered, game):
             [f"{player}_x", f"{player}_y", f"{player}_vx", f"{player}_vy"]
         )
         player_to_team[str(player)] = player.split("_")[0]
-
     df_tracking = accessible_space.per_object_frameify_tracking_data(
         df_tracking_filtered,
         "frame",
@@ -164,7 +170,7 @@ def frameify_tracking_data(df_tracking_filtered, game):
 
 def calculate_pitch_result(df_frameified, game_id, frame_step_size):
     pitch_result_path = (
-        Path("cache_new") / f"pitch_results/{game_id}_step{frame_step_size}.pkl"
+        CACHE_PATH / f"pitch_results/{game_id}_step{frame_step_size}.pkl"
     )
     pitch_result_path.parent.mkdir(parents=True, exist_ok=True)
     if pitch_result_path.exists():
@@ -201,8 +207,7 @@ def calculate_pitch_result(df_frameified, game_id, frame_step_size):
     df_frameified["DAS"] = pitch_result.das
     frame_list = df_frameified["frame"].unique()
     frame_list_path = (
-        Path("cache_new")
-        / f"pitch_results/frame_list_{game_id}_step{frame_step_size}.csv"
+        CACHE_PATH / f"pitch_results/frame_list_{game_id}_step{frame_step_size}.csv"
     )
     frame_list_path.parent.mkdir(parents=True, exist_ok=True)
     if not frame_list_path.exists():
@@ -224,14 +229,20 @@ def calculate_player_optization(
 ):
     df = pd.DataFrame(game.tracking_data.copy())
     df_pre_frames = get_pre_frames(df, game.tracking_data.frame_rate, frame_list)
-    param_path = f"R_{params["max_radius"]}-S_{params["opt_step_size"]}-D_{params["min_dist"]}-N_{params["n"]}"
-    param_path = param_path + f"-C_{cut}" if cut > 0 else param_path
+    param_path_base = f"R_{params["max_radius"]}-S_{params["opt_step_size"]}-D_{params["min_dist"]}-N_{params["n"]}"
+    param_path_base = param_path_base + f"-C_{cut}" if cut > 0 else param_path_base
     for player in players:
         subset = df_frameified[df_frameified["player_id"] == player]
         if subset.empty:
             print("empty")
             continue
         for method in methods:
+            param_path = param_path_base
+            if method == "grid_search" and params["fine_radius"]:
+                param_path = (
+                    param_path
+                    + f"-fradius_{params["fine_radius"]}-fstep_{params["fine_step"]}"
+                )
             simulation_path = get_simulation_path(
                 game_id, player, method, frame_step_size
             )
@@ -239,7 +250,6 @@ def calculate_player_optization(
                 pitch_result_optimized,
                 frame_list_optimized,
                 df_frameified_optimized,
-                df_frameified_simulated,
             ) = find_optimal_position(
                 param_path,
                 simulation_path,
@@ -253,7 +263,7 @@ def calculate_player_optization(
                 frame_step_size,
             )
             reduce_path = (
-                Path("cache_new")
+                CACHE_PATH
                 / f"optimization/{game_id}/{player}/step{frame_step_size}/{method}/{param_path}"
             )
             df_reduced = reduce_df_optimization(df_frameified_optimized, reduce_path)
@@ -267,8 +277,7 @@ def get_pre_frames(df, frame_rate, frame_list):
 
 def get_simulation_path(game_id, player, method, frame_step_size):
     simulation_path = (
-        Path("cache_new")
-        / f"optimization/{game_id}/{player}/step{frame_step_size}/{method}"
+        CACHE_PATH / f"optimization/{game_id}/{player}/step{frame_step_size}/{method}"
     )
     simulation_path.mkdir(parents=True, exist_ok=True)
     return simulation_path
@@ -286,21 +295,21 @@ def find_optimal_position(
     method,
     frame_step_size,
 ):
+    pitch_result_okay = False
     df_optimized_path = simulation_path / param_path / f"df_optimized.csv"
-    df_simulated_path = simulation_path / param_path / f"df_simulated.csv"
     pitch_result_path = simulation_path / param_path / f"pitch_result.pkl"
     frame_list_path = simulation_path / param_path / f"frame_list.csv"
 
-    if (
-        df_optimized_path.exists()
-        and pitch_result_path.exists()
-        and frame_list_path.exists()
-        and df_simulated_path.exists()
-    ):
+    # Pitch Result checken, ob Datei in Ordnung
+    if pitch_result_path.exists():
+        try:
+            pitch_result_optimized = joblib.load(pitch_result_path)
+            pitch_result_okay = True
+        except Exception as e:
+            print(f"[WARN] Konnte {pitch_result_path} nicht laden: {e}")
+
+    if df_optimized_path.exists() and frame_list_path.exists() and pitch_result_okay:
         df_frameified_optimized = pd.read_csv(df_optimized_path)
-        df_frameified_simulated = pd.read_csv(
-            df_simulated_path, dtype={"databallpy_event": str}
-        )
         pitch_result_optimized = joblib.load(pitch_result_path)
         frame_list_optimized = np.loadtxt(frame_list_path, delimiter=",", dtype=str)
     else:
@@ -320,7 +329,7 @@ def find_optimal_position(
             frame_step_size,
         )
         frame_list_path.parent.mkdir(parents=True, exist_ok=True)
-        df_frameified_simulated.to_csv(df_simulated_path, index=False)
+
         df_frameified_optimized.to_csv(df_optimized_path, index=False)
         joblib.dump(pitch_result_optimized, pitch_result_path)
         np.savetxt(frame_list_path, frame_list_optimized, delimiter=",", fmt="%s")
@@ -328,7 +337,6 @@ def find_optimal_position(
         pitch_result_optimized,
         frame_list_optimized,
         df_frameified_optimized,
-        df_frameified_simulated,
     )
 
 
@@ -341,7 +349,7 @@ def reduce_df_optimization(df_frameified_optimized, reduce_path):
         df_reduced = df_frameified_optimized[
             df_frameified_optimized["opt_player"]
             == df_frameified_optimized["player_id"]
-        ][["player_id", "frame", "DAS", "DAS_new", "new_frame"]]
+        ][["player_id", "frame", "DAS", "DAS_new", "new_frame", "comp_time"]]
     df_reduced["DAS_potential"] = (df_reduced["DAS"] - df_reduced["DAS_new"]).clip(
         lower=0
     )
