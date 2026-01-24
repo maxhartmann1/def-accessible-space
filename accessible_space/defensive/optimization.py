@@ -5,8 +5,9 @@ import sys  # löschen, nur debug
 
 
 def compute_optimization(
-    df_tracking, df_pre_frames, players, frame_list, config, column_schema
+    df_tracking, df_pre_frames, players, frame_list, config, column_schema, wide_format
 ):
+
     for player in players:
         subset = df_tracking[df_tracking["player_id"] == player]
         if subset.empty:
@@ -15,7 +16,13 @@ def compute_optimization(
 
         pitch_result_optimized, frame_list_optimized, df_tracking_optimized = (
             _find_optimal_position(
-                df_tracking, df_pre_frames, player, frame_list, config, column_schema
+                df_tracking,
+                df_pre_frames,
+                player,
+                frame_list,
+                config,
+                column_schema,
+                wide_format,
             )
         )
     return pitch_result_optimized, frame_list_optimized, df_tracking_optimized
@@ -34,7 +41,7 @@ def reduce_df_optimization(df, column_schema):
 
 # Interne Funktionen
 def _find_optimal_position(
-    df_tracking, df_pre_frames, player, frame_list, config, column_schema
+    df_tracking, df_pre_frames, player, frame_list, config, column_schema, wide_format
 ):
     frame_col = column_schema.frame_column
     team_col = column_schema.team_column
@@ -67,7 +74,16 @@ def _find_optimal_position(
             )
             continue
 
-        x_center, y_center = pre_frame_data[[f"{player}_x", f"{player}_y"]].values[0]
+        if wide_format:
+            x_center, y_center = pre_frame_data[[f"{player}_x", f"{player}_y"]].values[
+                0
+            ]
+        else:
+            pre_data_row = pre_frame_data.loc[pre_frame_data["player_id"] == player]
+            x_center, y_center = (
+                pre_data_row["player_x"].iloc[0],
+                pre_data_row["player_y"].iloc[0],
+            )
         valid_positions = _create_valid_positions(
             df_tracking,
             frame,

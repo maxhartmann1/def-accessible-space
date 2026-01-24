@@ -1,8 +1,13 @@
 import pandas as pd
-from .config import PDDConfig, TrackingColumnSchema
-from .preprocessing import compute_preprocessing, compute_preframes
+from .config import PDDConfig, TrackingColumnSchema, PDDInputError
+from .preprocessing import (
+    compute_preprocessing,
+    compute_preframes,
+    compute_preprocessing_long,
+)
 from .optimization import compute_optimization, reduce_df_optimization
 from .aggregation import compute_player_level_pdd
+import sys  # Debug to delete
 
 
 def compute_pdd(
@@ -11,7 +16,6 @@ def compute_pdd(
     column_schema: TrackingColumnSchema = TrackingColumnSchema(),
     player_id: str | list[str] = None,
     wide_format: bool = True,
-    game_id: str = None,
 ):
     """
     Compute Player PDD.
@@ -32,11 +36,16 @@ def compute_pdd(
     # If Wide Format -> Preprocessing, else directly to DAS
     if wide_format:
         post_preprocessing_tracking_data = compute_preprocessing(
-            tracking_data, config, column_schema, game_id
+            tracking_data, config, column_schema
         )
 
     else:
-        post_preprocessing_tracking_data = tracking_data.copy()
+        try:
+            post_preprocessing_tracking_data = compute_preprocessing_long(
+                tracking_data, config, column_schema
+            )
+        except PDDInputError as e:
+            raise RuntimeError(f"PDD computation failed: {e}") from None
 
     frame_list = post_preprocessing_tracking_data[column_schema.frame_column].unique()
 
@@ -58,6 +67,7 @@ def compute_pdd(
             frame_list,
             config,
             column_schema,
+            wide_format,
         )
     )
     pdd_frame_level = reduce_df_optimization(df_tracking_optimized, column_schema)

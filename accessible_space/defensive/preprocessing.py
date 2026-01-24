@@ -4,10 +4,11 @@ from accessible_space import (
     get_dangerous_accessible_space,
 )
 from collections import defaultdict
-from .config import TrackingColumnSchema
+from .config import TrackingColumnSchema, PDDInputError
+import sys  # Debug to delete
 
 
-def compute_preprocessing(tracking_data, config, column_schema, game_id=None):
+def compute_preprocessing(tracking_data, config, column_schema):
     df = pd.DataFrame(tracking_data.copy())
 
     # Filter nach Frame-Step, Ballbesitz
@@ -20,13 +21,30 @@ def compute_preprocessing(tracking_data, config, column_schema, game_id=None):
     )
     # DAS-Berechnung Origin
     pitch_result, df_tracking_frameified = _calculate_pitch_result(
-        df_tracking_frameified, game_id, column_schema
+        df_tracking_frameified, column_schema
     )
     df_tracking = _filter_tracking_data_post_pitch_result(
         df_tracking_frameified, config.das_threshold
     )
 
     return df_tracking
+
+
+def compute_preprocessing_long(tracking_data, config, column_schema):
+    df = pd.DataFrame(tracking_data.copy())
+
+    # Check ob benötigte Spalten vorhanden
+    _check_columns(df, column_schema)
+
+    # Filter Frames
+    df_tracking_filtered = _filter_tracking_data_long(
+        df,
+        column_schema.frame_column,
+        config.frame_rate,
+        config.frame_filter_rate,
+        config.das_threshold,
+    )
+    return df_tracking_filtered
 
 
 def compute_preframes(df_tracking, frame_rate, frame_list, frame_col):
@@ -105,9 +123,7 @@ def _extract_player_structures(df, schema: TrackingColumnSchema):
     return coordinate_cols, player_to_team, sorted(players)
 
 
-def _calculate_pitch_result(df_tracking, game_id, schema):
-    if game_id is None:
-        game_id = "unkownGame"
+def _calculate_pitch_result(df_tracking, schema):
 
     pitch_result = get_dangerous_accessible_space(
         df_tracking,
@@ -136,3 +152,39 @@ def _calculate_pitch_result(df_tracking, game_id, schema):
 
 def _filter_tracking_data_post_pitch_result(df_tracking, das_threshold):
     return df_tracking[df_tracking["DAS"] >= das_threshold]
+
+
+def _check_columns(df, column_schema):
+    required_columns = set(
+        [
+            "player_id",
+            "player_x",
+            "player_y",
+            column_schema.frame_column,
+            column_schema.team_column,
+            column_schema.period_column,
+            column_schema.team_possession_col,
+            column_schema.player_in_possession_col,
+        ]
+    )
+    missing = required_columns - set(df.columns)
+    if missing:
+        raise PDDInputError(
+            f"Tracking data is missing required columns: {sorted(missing)}"
+        )
+    return
+
+
+def _filter_tracking_data_long(
+    df, frame_col, frame_rate, frame_filter_rate, das_threshold
+):
+    df_tracking_filtered = df[df["player_possession"].notna()]
+    frame_list = df_tracking_filtered[frame_col].drop_duplicates()
+    frame_list = frame_list[frame_rate::frame_filter_rate].tolist()
+    df_tracking_filtered = df_tracking_filtered[
+        df_tracking_filtered[frame_col].isin(frame_list)
+    ]
+    df_tracking_filtered = df_tracking_filtered[
+        df_tracking_filtered["DAS"] >= das_threshold
+    ]
+    return df_tracking_filtered
