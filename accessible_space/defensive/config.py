@@ -27,3 +27,7 @@ class TrackingColumnSchema:
     period_column: str = "period_id"
     team_possession_col: str = "team_possession"
     player_in_possession_col: str = "player_possession"
+
+
+class PDDInputError(Exception):
+    """Invalid input data for PDD computation"""
